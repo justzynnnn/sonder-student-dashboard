@@ -66,6 +66,52 @@ body {
   overscroll-behavior-y: none;
 }
 
+input[type='date'].input {
+  display: block;
+  box-sizing: border-box;
+  inline-size: 100%;
+  min-width: 0;
+  min-inline-size: 0;
+  max-width: 100%;
+  -webkit-appearance: none;
+  appearance: none;
+  line-height: 1.5rem;
+}
+
+input[type='date'].input::-webkit-datetime-edit {
+  min-width: 0;
+  overflow: hidden;
+}
+
+input[type='date'].input::-webkit-date-and-time-value {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  text-align: left;
+}
+
+input[type='date'].input::-webkit-calendar-picker-indicator {
+  flex-shrink: 0;
+  margin: 0;
+  padding: 0;
+}
+
+.bottom-sheet-panel {
+  max-height: min(88vh, calc(100vh - env(safe-area-inset-top) - 0.75rem));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+@supports (height: 100dvh) {
+  .bottom-sheet-panel {
+    max-height: min(88dvh, calc(100dvh - env(safe-area-inset-top) - 0.75rem));
+  }
+}
+
 /* ---------- Component utility classes ---------- */
 @layer components {
   .card {

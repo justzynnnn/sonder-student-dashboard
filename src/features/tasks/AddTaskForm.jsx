@@ -43,7 +43,7 @@ export default function AddTaskForm({ onDone, defaultDueDate = '' }) {
 
       <div>
         <label className="label">Task</label>
-        <input autoFocus value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Finish lab report" className="input" maxLength={100} />
+        <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Finish lab report" className="input" maxLength={100} />
       </div>
 
       <div>
