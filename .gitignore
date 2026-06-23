@@ -1,0 +1,32 @@
+# dependencies
+node_modules/
+**/node_modules/
+
+# build output
+dist/
+dist-ssr/
+*.local
+
+# env / secrets — never commit
+.env
+**/.env
+.env.*
+!.env.example
+
+# logs
+*.log
+npm-debug.log*
+
+# editor / OS
+.DS_Store
+.vscode/*
+!.vscode/extensions.json
+.idea/
+
+# misc binaries that must never ship
+*.tar.gz
+*.exe
+
+# capacitor native projects (generated)
+/ios/
+/android/
