@@ -272,7 +272,7 @@ function AddSavingForm({ onDone, cur }) {
   return (
     <form onSubmit={submit} className="space-y-4 pb-4">
       <div><label className="label">Saving for…</label><input autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder="New laptop, trip…" className="input" maxLength={40} /></div>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div><label className="label">Target ({cur})</label><input type="number" inputMode="decimal" value={target} onChange={(e) => setTarget(e.target.value)} placeholder="0.00" className="input" /></div>
         <div><label className="label">Saved so far</label><input type="number" inputMode="decimal" value={saved} onChange={(e) => setSaved(e.target.value)} placeholder="0.00" className="input" /></div>
       </div>

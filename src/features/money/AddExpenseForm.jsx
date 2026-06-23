@@ -83,7 +83,7 @@ export default function AddExpenseForm({ onDone }) {
         <input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="What was it for?" className="input" maxLength={80} />
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div>
           <label className="label">Date</label>
           <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="input" />
