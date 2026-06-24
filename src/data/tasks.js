@@ -1,10 +1,9 @@
 import { db } from './db';
 import { generateId } from '../lib/ids';
-import { sanitizeText, sanitizeMultiline, sanitizeEnum, sanitizeOptionalDate } from '../lib/sanitize';
+import { sanitizeText, sanitizeMultiline, sanitizeEnum, sanitizeOptionalDate, sanitizeCategory } from '../lib/sanitize';
 import { todayISO } from '../lib/dates';
 
 export const PRIORITIES = ['low', 'med', 'high'];
-export const TASK_CATEGORIES = ['school', 'personal'];
 
 export async function addTask({ title, notes, priority, dueDate, category }) {
   const clean = sanitizeText(title, 100);
@@ -14,7 +13,7 @@ export async function addTask({ title, notes, priority, dueDate, category }) {
     title: clean,
     notes: sanitizeMultiline(notes, 500),
     priority: sanitizeEnum(priority, PRIORITIES, 'med'),
-    category: sanitizeEnum(category, TASK_CATEGORIES, 'school'),
+    category: sanitizeCategory(category, 'School'),
     dueDate: sanitizeOptionalDate(dueDate),
     status: 'todo',
     completedAt: null,
@@ -40,7 +39,7 @@ export async function updateTask(id, patch) {
   if (patch.title !== undefined) clean.title = sanitizeText(patch.title, 100);
   if (patch.notes !== undefined) clean.notes = sanitizeMultiline(patch.notes, 500);
   if (patch.priority !== undefined) clean.priority = sanitizeEnum(patch.priority, PRIORITIES, 'med');
-  if (patch.category !== undefined) clean.category = sanitizeEnum(patch.category, TASK_CATEGORIES, 'school');
+  if (patch.category !== undefined) clean.category = sanitizeCategory(patch.category, 'School');
   if (patch.dueDate !== undefined) clean.dueDate = sanitizeOptionalDate(patch.dueDate);
   await db.tasks.update(id, clean);
 }

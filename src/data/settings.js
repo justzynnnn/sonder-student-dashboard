@@ -8,11 +8,12 @@ const KEY = 'app';
 export const TOGGLEABLE_TABS = [
   { id: 'money', label: 'Money' },
   { id: 'tasks', label: 'Tasks' },
+  { id: 'time', label: 'Time' },
   { id: 'gym', label: 'Gym' },
   { id: 'goals', label: 'Goals' },
 ];
 
-export const DEFAULT_TABS = { money: true, tasks: true, gym: true, goals: true };
+export const DEFAULT_TABS = { money: true, tasks: true, time: true, gym: true, goals: true };
 
 export const DEFAULT_SETTINGS = {
   key: KEY,

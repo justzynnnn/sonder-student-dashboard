@@ -1,8 +1,9 @@
 import { startOfWeek, toISO } from './dates';
 import { spendingByCategory } from '../data/money';
+import { totalMinutes } from '../data/time';
 
 // Aggregate the current week into a shareable "Weekly Life Recap".
-export function buildRecap({ expenses, tasks, sessions, savings }) {
+export function buildRecap({ expenses, tasks, sessions, timeEntries }) {
   const weekStart = toISO(startOfWeek());
 
   const weekExpenses = (expenses || []).filter((e) => (e.date || '') >= weekStart);
@@ -15,9 +16,9 @@ export function buildRecap({ expenses, tasks, sessions, savings }) {
 
   const workouts = (sessions || []).filter((s) => (s.date || '') >= weekStart).length;
 
-  const saved = (savings || []).reduce((s, g) => s + (g.saved || 0), 0);
+  const timeMinutes = totalMinutes((timeEntries || []).filter((entry) => (entry.date || '') >= weekStart));
 
-  return { weekStart, spent, topCategory, tasksDone, workouts, saved };
+  return { weekStart, spent, topCategory, tasksDone, workouts, timeMinutes };
 }
 
 // A friendly headline for the recap card.

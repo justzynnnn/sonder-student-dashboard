@@ -3,10 +3,10 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { Plus } from 'lucide-react';
 import { db } from '../../data/db';
 import { addExpense } from '../../data/money';
-import { BUILT_IN_CATEGORIES } from '../../data/categories';
 import { useSettings } from '../../hooks/useSettings';
 import { useFeedback } from '../../components/Feedback';
-import { currencySymbol } from '../../lib/currency';
+import CategoryPicker from '../../components/CategoryPicker';
+import { currencySymbol, formatMoney } from '../../lib/currency';
 import { todayISO } from '../../lib/dates';
 
 export default function AddExpenseForm({ onDone }) {
@@ -64,28 +64,7 @@ export default function AddExpenseForm({ onDone }) {
       </div>
 
       <div>
-        <label className="label">Category</label>
-        <div className="flex flex-wrap gap-2">
-          {BUILT_IN_CATEGORIES.map((categoryOption) => {
-            const active = categoryOption.name === category;
-            return (
-              <button
-                key={categoryOption.name}
-                type="button"
-                onClick={() => setCategory(categoryOption.name)}
-                className="chip border transition"
-                style={{
-                  borderColor: active ? categoryOption.color : 'rgb(var(--line))',
-                  background: active ? `color-mix(in srgb, ${categoryOption.color} 18%, transparent)` : 'rgb(var(--surface-2))',
-                  color: active ? categoryOption.color : 'rgb(var(--muted))',
-                }}
-              >
-                <span className="h-2.5 w-2.5 rounded-full" style={{ background: categoryOption.color }} />
-                {categoryOption.name}
-              </button>
-            );
-          })}
-        </div>
+        <CategoryPicker domain="money" value={category} onChange={setCategory} />
       </div>
 
       <div>
@@ -102,9 +81,15 @@ export default function AddExpenseForm({ onDone }) {
           <label className="label">Account</label>
           <select value={accountId} onChange={(e) => setAccountId(e.target.value)} className="input">
             <option value="">None</option>
-            {(accounts || []).map((account) => (
-              <option key={account.id} value={account.id}>{account.name}</option>
-            ))}
+            {(accounts || []).map((account) => {
+              const isCredit = account.type === 'credit';
+              const due = account.balance || 0;
+              const available = Math.max(0, (account.creditLimit || 0) - due);
+              const detail = isCredit
+                ? `Due ${formatMoney(due, settings.baseCurrency)} / avail ${formatMoney(available, settings.baseCurrency)}`
+                : formatMoney(account.balance || 0, settings.baseCurrency);
+              return <option key={account.id} value={account.id}>{account.name} - {detail}</option>;
+            })}
           </select>
         </div>
       </div>

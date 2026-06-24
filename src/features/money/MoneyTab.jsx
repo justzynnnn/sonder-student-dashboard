@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { Plus, Trash2, Wallet, Sparkles, Calculator } from 'lucide-react';
+import { Banknote, Calculator, CreditCard, Plus, Sparkles, Trash2, Wallet } from 'lucide-react';
 import { db } from '../../data/db';
 import { useSettings } from '../../hooks/useSettings';
 import { useFeedback } from '../../components/Feedback';
@@ -12,48 +12,67 @@ import CategoryDonut from './CategoryDonut';
 import AddExpenseForm from './AddExpenseForm';
 import { formatMoney, currencySymbol } from '../../lib/currency';
 import { humanDate } from '../../lib/dates';
-import { categoryMeta } from '../../data/categories';
+import { domainCategoryMeta } from '../../data/categories';
 import { moneyNote, affordNote } from '../../lib/encouragement';
 import {
-  moneyOverview, spentInPeriod, spendingByCategory, affordVerdict,
-  addAccount, deleteAccount, addSaving, addToSaving, deleteSaving, deleteExpense,
+  moneyOverview,
+  spentInPeriod,
+  spendingByCategory,
+  affordVerdict,
+  addAccount,
+  deleteAccount,
+  payCreditCard,
+  deleteExpense,
 } from '../../data/money';
+
+const ACCOUNT_TYPE_OPTIONS = [
+  { id: 'cash', label: 'Cash' },
+  { id: 'debit', label: 'Debit' },
+  { id: 'credit', label: 'Credit' },
+];
 
 export default function MoneyTab() {
   const { settings } = useSettings();
   const cur = settings.baseCurrency;
   const [period, setPeriod] = useState('week');
-  const [sheet, setSheet] = useState(null); // 'expense' | 'account' | 'saving'
+  const [sheet, setSheet] = useState(null);
+  const [payingCard, setPayingCard] = useState(null);
 
   const expenses = useLiveQuery(() => db.expenses.orderBy('date').reverse().toArray(), [], []);
   const accounts = useLiveQuery(() => db.accounts.toArray(), [], []);
-  const savings = useLiveQuery(() => db.savings.toArray(), [], []);
+  const customCategories = useLiveQuery(() => db.customCategories.where('domain').equals('money').toArray(), [], []);
 
-  const money = moneyOverview(accounts || [], expenses || []);
+  const accountList = accounts || [];
+  const money = moneyOverview(accountList, expenses || []);
   const spent = spentInPeriod(expenses || [], period);
   const byCat = spendingByCategory(expenses || [], period);
   const note = moneyNote({ hasAccounts: money.hasAccounts, runway: money.runway });
+  const colorFor = (name) => domainCategoryMeta('money', name, customCategories || []).color;
 
   return (
     <div className="animate-fade-up space-y-4">
       <h1 className="font-display text-2xl font-extrabold tracking-tight">Money</h1>
 
-      {/* Hero: total money + runway */}
       <div className="card-pad">
         {money.hasAccounts ? (
           <div className="flex items-center gap-5">
             <ProgressRing value={money.runway != null ? Math.min(1, money.runway / 30) : 1} size={104} stroke={11} color="rgb(var(--money))">
               <div className="text-center">
                 <p className="text-[10px] font-semibold uppercase text-muted">runway</p>
-                <p className="text-sm font-extrabold">{money.runway != null ? `${money.runway}d` : '∞'}</p>
+                <p className="text-sm font-extrabold">{money.runway != null ? `${money.runway}d` : 'steady'}</p>
               </div>
             </ProgressRing>
-            <div className="flex-1">
-              <p className="section-title">Total money</p>
+            <div className="min-w-0 flex-1">
+              <p className="section-title">Available cash</p>
               <p className="font-display text-3xl font-extrabold text-money">{formatMoney(money.total, cur)}</p>
               <p className="mt-1 text-xs text-muted">
-                {accounts.length} account{accounts.length === 1 ? '' : 's'} · {money.burn > 0 ? `~${formatMoney(money.burn, cur)}/day` : 'no spend yet'}
+                {accountList.length} account{accountList.length === 1 ? '' : 's'} - {money.burn > 0 ? `~${formatMoney(money.burn, cur)}/day` : 'no spend pace yet'}
               </p>
+              {money.credit.cards.length ? (
+                <p className="mt-1 text-xs font-semibold text-muted">
+                  Credit due: {formatMoney(money.credit.due, cur)} / {formatMoney(money.credit.limit, cur)}
+                </p>
+              ) : null}
             </div>
           </div>
         ) : (
@@ -61,7 +80,7 @@ export default function MoneyTab() {
             <span className="grid h-12 w-12 place-items-center rounded-2xl bg-money/15 text-money"><Wallet size={22} /></span>
             <div>
               <p className="font-bold">Add your first account</p>
-              <p className="text-sm text-muted">Track your real money and runway.</p>
+              <p className="text-sm text-muted">Track cash, debit, or credit cards.</p>
             </div>
           </button>
         )}
@@ -71,27 +90,26 @@ export default function MoneyTab() {
         </div>
       </div>
 
-      <AffordCheck cur={cur} accounts={accounts || []} expenses={expenses || []} />
+      <AffordCheck cur={cur} accounts={accountList} expenses={expenses || []} />
 
-      {/* Accounts */}
       <Section title="Accounts" action={<AddBtn onClick={() => setSheet('account')} />}>
-        {(accounts || []).length === 0 ? (
-          <p className="px-1 text-sm text-muted">No accounts yet — add cash, a card, or an e-wallet.</p>
+        {accountList.length === 0 ? (
+          <p className="px-1 text-sm text-muted">No accounts yet. Add cash, debit, or a credit card.</p>
         ) : (
           <div className="no-scrollbar -mx-1 flex gap-3 overflow-x-auto px-1 pb-1">
-            {accounts.map((a) => (
-              <div key={a.id} className="card relative w-40 shrink-0 p-4">
-                <button onClick={() => deleteAccount(a.id)} aria-label="Delete account" className="absolute right-2 top-2 text-muted hover:text-rose-500"><Trash2 size={14} /></button>
-                <span className="grid h-9 w-9 place-items-center rounded-xl bg-money/15 text-money"><Wallet size={18} /></span>
-                <p className="mt-2 truncate text-sm font-semibold">{a.name}</p>
-                <p className="font-display text-lg font-extrabold">{formatMoney(a.balance, cur)}</p>
-              </div>
+            {accountList.map((account) => (
+              <AccountCard
+                key={account.id}
+                account={account}
+                cur={cur}
+                onPay={() => setPayingCard(account)}
+                onDelete={() => deleteAccount(account.id)}
+              />
             ))}
           </div>
         )}
       </Section>
 
-      {/* Spending breakdown */}
       <Section
         title="Spending"
         action={<SegmentedControl className="w-40" options={[{ id: 'week', label: 'Week' }, { id: 'month', label: 'Month' }]} value={period} onChange={setPeriod} />}
@@ -100,13 +118,13 @@ export default function MoneyTab() {
           <p className="px-1 text-sm text-muted">No spending logged this {period}. Tap + to add one.</p>
         ) : (
           <div className="card-pad flex items-center gap-5">
-            <CategoryDonut data={byCat} total={spent} />
-            <ul className="flex-1 space-y-2">
-              {byCat.slice(0, 5).map((d) => (
-                <li key={d.category} className="flex items-center gap-2 text-sm">
-                  <span className="h-3 w-3 shrink-0 rounded-full" style={{ background: categoryMeta(d.category).color }} />
-                  <span className="flex-1 truncate">{d.category}</span>
-                  <span className="font-semibold">{formatMoney(d.total, cur)}</span>
+            <CategoryDonut data={byCat} total={spent} colorFor={colorFor} />
+            <ul className="min-w-0 flex-1 space-y-2">
+              {byCat.slice(0, 5).map((row) => (
+                <li key={row.category} className="flex items-center gap-2 text-sm">
+                  <span className="h-3 w-3 shrink-0 rounded-full" style={{ background: colorFor(row.category) }} />
+                  <span className="min-w-0 flex-1 truncate">{row.category}</span>
+                  <span className="shrink-0 font-semibold">{formatMoney(row.total, cur)}</span>
                 </li>
               ))}
             </ul>
@@ -114,51 +132,20 @@ export default function MoneyTab() {
         )}
       </Section>
 
-      {/* Savings goals */}
-      <Section title="Savings goals" action={<AddBtn onClick={() => setSheet('saving')} />}>
-        {(savings || []).length === 0 ? (
-          <p className="px-1 text-sm text-muted">Saving for something? Add a goal and watch it grow.</p>
-        ) : (
-          <div className="space-y-2">
-            {savings.map((s) => {
-              const p = Math.min(1, s.saved / s.target);
-              return (
-                <div key={s.id} className="card-pad">
-                  <div className="flex items-center justify-between">
-                    <p className="font-semibold">{s.name}</p>
-                    <button onClick={() => deleteSaving(s.id)} aria-label="Delete" className="text-muted hover:text-rose-500"><Trash2 size={14} /></button>
-                  </div>
-                  <div className="mt-2 h-2.5 overflow-hidden rounded-full bg-surface-2">
-                    <div className="h-full rounded-full bg-gradient-to-r from-money to-emerald-400" style={{ width: `${p * 100}%` }} />
-                  </div>
-                  <div className="mt-1.5 flex items-center justify-between text-xs">
-                    <span className="text-muted">{formatMoney(s.saved, cur)} / {formatMoney(s.target, cur)}</span>
-                    <button onClick={() => addToSaving(s.id, 10)} className="inline-flex min-h-8 items-center rounded-xl bg-money/10 px-2.5 text-xs font-bold text-money transition hover:bg-money/15 active:scale-95">
-                      + Add {currencySymbol(cur)}10
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </Section>
-
-      {/* Recent expenses */}
       <Section title="Recent">
         {(expenses || []).length === 0 ? (
           <EmptyState icon={Wallet} title="No expenses yet" hint="Log your first one with the + button." />
         ) : (
           <ul className="space-y-2">
-            {expenses.slice(0, 12).map((e) => (
-              <li key={e.id} className="card flex items-center gap-3 p-3">
-                <span className="h-9 w-1.5 shrink-0 rounded-full" style={{ background: categoryMeta(e.category).color }} />
+            {(expenses || []).slice(0, 12).map((expense) => (
+              <li key={expense.id} className="card flex items-center gap-3 p-3">
+                <span className="h-9 w-1.5 shrink-0 rounded-full" style={{ background: colorFor(expense.category) }} />
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-semibold">{e.description || e.category}</p>
-                  <p className="text-xs text-muted">{humanDate(e.date)} · {e.category}</p>
+                  <p className="truncate text-sm font-semibold">{expense.description || expense.category}</p>
+                  <p className="text-xs text-muted">{humanDate(expense.date)} - {expense.category}</p>
                 </div>
-                <span className="font-display font-extrabold">{formatMoney(e.amount, cur)}</span>
-                <button onClick={() => deleteExpense(e.id)} aria-label="Delete" className="text-muted hover:text-rose-500"><Trash2 size={15} /></button>
+                <span className="font-display font-extrabold">{formatMoney(expense.amount, cur)}</span>
+                <button onClick={() => deleteExpense(expense.id)} aria-label="Delete" className="text-muted hover:text-rose-500"><Trash2 size={15} /></button>
               </li>
             ))}
           </ul>
@@ -170,16 +157,43 @@ export default function MoneyTab() {
         Add expense
       </button>
 
-      {/* Sheets */}
       <BottomSheet open={sheet === 'expense'} onClose={() => setSheet(null)} title="Add expense">
         <AddExpenseForm onDone={() => setSheet(null)} />
       </BottomSheet>
       <BottomSheet open={sheet === 'account'} onClose={() => setSheet(null)} title="Add account">
         <AddAccountForm onDone={() => setSheet(null)} cur={cur} />
       </BottomSheet>
-      <BottomSheet open={sheet === 'saving'} onClose={() => setSheet(null)} title="New savings goal">
-        <AddSavingForm onDone={() => setSheet(null)} cur={cur} />
+      <BottomSheet open={!!payingCard} onClose={() => setPayingCard(null)} title="Pay credit card">
+        {payingCard ? <PayCreditForm card={payingCard} cur={cur} onDone={() => setPayingCard(null)} /> : null}
       </BottomSheet>
+    </div>
+  );
+}
+
+function AccountCard({ account, cur, onPay, onDelete }) {
+  const isCredit = account.type === 'credit';
+  const due = account.balance || 0;
+  const limit = account.creditLimit || 0;
+  const available = Math.max(0, limit - due);
+  const Icon = isCredit ? CreditCard : account.type === 'debit' ? Banknote : Wallet;
+
+  return (
+    <div className="card relative w-48 shrink-0 p-4">
+      <button onClick={onDelete} aria-label="Delete account" className="absolute right-2 top-2 text-muted hover:text-rose-500"><Trash2 size={14} /></button>
+      <span className="grid h-9 w-9 place-items-center rounded-xl bg-money/15 text-money"><Icon size={18} /></span>
+      <p className="mt-2 truncate text-sm font-semibold">{account.name}</p>
+      <p className="mt-0.5 text-[11px] font-bold uppercase tracking-wide text-muted">{isCredit ? 'Credit card' : account.type || 'Cash'}</p>
+      {isCredit ? (
+        <>
+          <p className="mt-1 font-display text-lg font-extrabold">{formatMoney(due, cur)} due</p>
+          <p className="text-xs text-muted">{formatMoney(available, cur)} available</p>
+          <button type="button" onClick={onPay} className="mt-3 min-h-9 w-full rounded-2xl bg-money/10 px-3 text-xs font-bold text-money transition hover:bg-money/15 active:scale-95">
+            Pay card
+          </button>
+        </>
+      ) : (
+        <p className="mt-1 font-display text-lg font-extrabold">{formatMoney(account.balance || 0, cur)}</p>
+      )}
     </div>
   );
 }
@@ -207,8 +221,9 @@ function AddBtn({ onClick }) {
 
 function AffordCheck({ cur, accounts, expenses }) {
   const [amount, setAmount] = useState('');
-  const v = amount ? affordVerdict(parseFloat(amount) || 0, accounts, expenses) : null;
-  const msg = v ? affordNote(v.level) : null;
+  const parsed = parseFloat(amount) || 0;
+  const verdict = parsed ? affordVerdict(parsed, accounts, expenses) : null;
+  const msg = verdict ? affordNote(verdict.level, verdict) : null;
   const toneColor = { good: 'text-money', warn: 'text-gym', bad: 'text-rose-500', muted: 'text-muted' };
 
   return (
@@ -221,75 +236,119 @@ function AffordCheck({ cur, accounts, expenses }) {
         <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 font-bold text-muted">{currencySymbol(cur)}</span>
         <input type="number" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="How much?" className="input pl-8" />
       </div>
-      {msg && (
+      {msg ? (
         <div className="mt-2">
           <p className={`text-sm font-semibold ${toneColor[msg.tone]}`}>{msg.text}</p>
-          {v && v.level !== 'unknown' && v.level !== 'over' && (
-            <p className="mt-0.5 text-xs text-muted">
-              Leaves you {formatMoney(v.after, cur)}{v.runwayAfter != null ? ` · ~${v.runwayAfter} days of runway` : ''}.
+          {verdict.level !== 'unknown' ? (
+            <p className="mt-0.5 text-xs leading-relaxed text-muted">
+              {verdict.burn > 0
+                ? `After your usual pace for the rest of the month, cushion would be ${formatMoney(verdict.cushionAfter, cur)}.`
+                : `With no spend pace yet, this is judged by how much of available cash it uses.`}
             </p>
-          )}
+          ) : null}
         </div>
-      )}
+      ) : null}
     </div>
   );
 }
 
 function AddAccountForm({ onDone, cur }) {
   const [name, setName] = useState('');
+  const [type, setType] = useState('cash');
   const [balance, setBalance] = useState('');
+  const [creditLimit, setCreditLimit] = useState('');
   const [busy, setBusy] = useState(false);
   const { toast } = useFeedback();
+
   const submit = async (e) => {
     e.preventDefault();
     if (busy) return;
     setBusy(true);
-    try { await addAccount({ name, balance }); onDone(); }
-    catch (err) { toast(err.message, 'bad'); }
-    finally { setBusy(false); }
+    try {
+      await addAccount({ name, type, balance, creditLimit });
+      onDone();
+    } catch (err) {
+      toast(err.message, 'bad');
+    } finally {
+      setBusy(false);
+    }
   };
+
   return (
     <form onSubmit={submit} className="space-y-4 pb-4">
       <div>
         <label className="label">Name</label>
-        <input autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder="Cash, Bank, e-wallet…" className="input" maxLength={40} />
+        <input autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder="Cash, bank, student card..." className="input" maxLength={40} />
       </div>
       <div>
-        <label className="label">Current balance ({cur})</label>
-        <input type="number" inputMode="decimal" value={balance} onChange={(e) => setBalance(e.target.value)} placeholder="0.00" className="input" />
+        <label className="label">Type</label>
+        <div className="grid grid-cols-3 gap-2">
+          {ACCOUNT_TYPE_OPTIONS.map((option) => {
+            const active = option.id === type;
+            return (
+              <button
+                key={option.id}
+                type="button"
+                onClick={() => setType(option.id)}
+                className={`min-h-11 rounded-2xl border px-2 text-sm font-bold transition active:scale-[0.98] ${active ? 'border-money bg-money/10 text-money' : 'border-line bg-surface-2 text-muted'}`}
+              >
+                {option.label}
+              </button>
+            );
+          })}
+        </div>
       </div>
+      {type === 'credit' ? (
+        <div>
+          <label className="label">Credit limit ({cur})</label>
+          <input type="number" inputMode="decimal" value={creditLimit} onChange={(e) => setCreditLimit(e.target.value)} placeholder="0.00" className="input" />
+        </div>
+      ) : (
+        <div>
+          <label className="label">Current balance ({cur})</label>
+          <input type="number" inputMode="decimal" value={balance} onChange={(e) => setBalance(e.target.value)} placeholder="0.00" className="input" />
+        </div>
+      )}
       <button disabled={busy} className="btn-add-primary w-full">
         <span className="add-symbol"><Plus size={16} /></span>
-        Add account
+        {busy ? 'Saving...' : 'Add account'}
       </button>
     </form>
   );
 }
 
-function AddSavingForm({ onDone, cur }) {
-  const [name, setName] = useState('');
-  const [target, setTarget] = useState('');
-  const [saved, setSaved] = useState('');
+function PayCreditForm({ card, cur, onDone }) {
+  const [amount, setAmount] = useState('');
   const [busy, setBusy] = useState(false);
-  const { celebrate, toast } = useFeedback();
+  const { toast } = useFeedback();
+
   const submit = async (e) => {
     e.preventDefault();
     if (busy) return;
     setBusy(true);
-    try { await addSaving({ name, target, saved }); celebrate('Goal added'); onDone(); }
-    catch (err) { toast(err.message, 'bad'); }
-    finally { setBusy(false); }
+    try {
+      await payCreditCard(card.id, amount);
+      toast('Payment logged', 'good');
+      onDone();
+    } catch (err) {
+      toast(err.message, 'bad');
+    } finally {
+      setBusy(false);
+    }
   };
+
   return (
     <form onSubmit={submit} className="space-y-4 pb-4">
-      <div><label className="label">Saving for…</label><input autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder="New laptop, trip…" className="input" maxLength={40} /></div>
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <div><label className="label">Target ({cur})</label><input type="number" inputMode="decimal" value={target} onChange={(e) => setTarget(e.target.value)} placeholder="0.00" className="input" /></div>
-        <div><label className="label">Saved so far</label><input type="number" inputMode="decimal" value={saved} onChange={(e) => setSaved(e.target.value)} placeholder="0.00" className="input" /></div>
+      <div className="rounded-[1.35rem] border border-line bg-surface-2 p-3">
+        <p className="text-sm font-bold">{card.name}</p>
+        <p className="mt-1 text-xs text-muted">Current due: {formatMoney(card.balance || 0, cur)}</p>
+      </div>
+      <div>
+        <label className="label">Payment amount ({cur})</label>
+        <input autoFocus type="number" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0.00" className="input" />
       </div>
       <button disabled={busy} className="btn-add-primary w-full">
-        <span className="add-symbol"><Plus size={16} /></span>
-        Create goal
+        {busy ? 'Saving...' : 'Log payment'}
       </button>
     </form>
   );

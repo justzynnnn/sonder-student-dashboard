@@ -1,7 +1,7 @@
 import { categoryMeta } from '../../data/categories';
 
 // SVG donut of spending-by-category. data: [{ category, total }] (sorted desc).
-export default function CategoryDonut({ data, total, size = 132, stroke = 16 }) {
+export default function CategoryDonut({ data, total, size = 132, stroke = 16, colorFor = (category) => categoryMeta(category).color }) {
   const r = (size - stroke) / 2;
   const c = 2 * Math.PI * r;
   let offset = 0;
@@ -20,7 +20,7 @@ export default function CategoryDonut({ data, total, size = 132, stroke = 16 }) 
               cy={size / 2}
               r={r}
               fill="none"
-              stroke={categoryMeta(d.category).color}
+              stroke={colorFor(d.category)}
               strokeWidth={stroke}
               strokeDasharray={`${len} ${c - len}`}
               strokeDashoffset={-offset}

@@ -2,22 +2,18 @@ import { useState } from 'react';
 import { Plus } from 'lucide-react';
 import { addTask } from '../../data/tasks';
 import { useFeedback } from '../../components/Feedback';
+import CategoryPicker from '../../components/CategoryPicker';
 
 const PRIORITY_OPTS = [
   { id: 'low', label: 'Low', color: '#10b981' },
   { id: 'med', label: 'Medium', color: '#f59e0b' },
   { id: 'high', label: 'High', color: '#ef4444' },
 ];
-const CATEGORY_OPTS = [
-  { id: 'school', label: 'School' },
-  { id: 'personal', label: 'Personal' },
-];
-
 export default function AddTaskForm({ onDone, defaultDueDate = '' }) {
   const { toast } = useFeedback();
   const [title, setTitle] = useState('');
   const [priority, setPriority] = useState('med');
-  const [category, setCategory] = useState('school');
+  const [category, setCategory] = useState('School');
   const [dueDate, setDueDate] = useState(defaultDueDate);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -72,12 +68,7 @@ export default function AddTaskForm({ onDone, defaultDueDate = '' }) {
       </div>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <div>
-          <label className="label">Type</label>
-          <select value={category} onChange={(e) => setCategory(e.target.value)} className="input">
-            {CATEGORY_OPTS.map((categoryOption) => <option key={categoryOption.id} value={categoryOption.id}>{categoryOption.label}</option>)}
-          </select>
-        </div>
+        <CategoryPicker domain="tasks" value={category} onChange={setCategory} />
         <div>
           <label className="label">Due (optional)</label>
           <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className="input" />

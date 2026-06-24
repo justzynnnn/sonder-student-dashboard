@@ -15,8 +15,11 @@ const STORES = {
   expenses: 'id, date, category, accountId, createdAt',
   budgets: 'category',
   savings: 'id, createdAt',
+  customCategories: 'id, &[domain+name], domain, name, createdAt',
   // Tasks
   tasks: 'id, status, dueDate, priority, category, createdAt',
+  // Time
+  timeEntries: 'id, date, category, startTime, createdAt',
   // Gym
   exercises: 'name',
   plans: 'id, createdAt',
@@ -27,6 +30,7 @@ const STORES = {
 };
 
 db.version(1).stores(STORES);
+db.version(2).stores(STORES);
 
 db.on('ready', async () => {
   const hasSettings = await db.settings.count();

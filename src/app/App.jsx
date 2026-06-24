@@ -13,6 +13,7 @@ import Onboarding from './Onboarding';
 import HomeTab from '../features/home/HomeTab';
 import MoneyTab from '../features/money/MoneyTab';
 import TasksTab from '../features/tasks/TasksTab';
+import TimeTab from '../features/time/TimeTab';
 import GymTab from '../features/gym/GymTab';
 import GoalsTab from '../features/goals/GoalsTab';
 import SettingsPage from '../features/settings/SettingsPage';
@@ -60,6 +61,7 @@ export default function App() {
           {/* Disabled tabs redirect home so deep links never dead-end. */}
           <Route path="money" element={tabs.money ? <MoneyTab /> : <Navigate to="/" replace />} />
           <Route path="tasks" element={tabs.tasks ? <TasksTab /> : <Navigate to="/" replace />} />
+          <Route path="time" element={tabs.time ? <TimeTab /> : <Navigate to="/" replace />} />
           <Route path="gym" element={tabs.gym ? <GymTab /> : <Navigate to="/" replace />} />
           <Route path="goals" element={tabs.goals ? <GoalsTab /> : <Navigate to="/" replace />} />
           <Route path="settings" element={<SettingsPage />} />

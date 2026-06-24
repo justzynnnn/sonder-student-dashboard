@@ -1,13 +1,15 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Wallet, ListChecks, Dumbbell, Target } from 'lucide-react';
+import { Wallet, ListChecks, Dumbbell, Target, Clock3 } from 'lucide-react';
 import BottomSheet from '../components/BottomSheet';
 import AddExpenseForm from '../features/money/AddExpenseForm';
 import AddTaskForm from '../features/tasks/AddTaskForm';
+import { AddTimeEntryForm } from '../features/time/TimeTab';
 
 const MENU = [
   { id: 'expense', tab: 'money', label: 'Expense', icon: Wallet, accent: 'rgb(var(--money))' },
   { id: 'task', tab: 'tasks', label: 'Task', icon: ListChecks, accent: 'rgb(var(--tasks))' },
+  { id: 'time', tab: 'time', label: 'Time', icon: Clock3, accent: 'rgb(var(--time))' },
   { id: 'workout', tab: 'gym', label: 'Workout', icon: Dumbbell, accent: 'rgb(var(--gym))' },
   { id: 'goal', tab: 'goals', label: 'Goal', icon: Target, accent: 'rgb(var(--goals))' },
 ];
@@ -34,7 +36,7 @@ export default function QuickAdd({ open, onClose, tabs = {} }) {
     }
   };
 
-  const title = mode === 'expense' ? 'Add expense' : mode === 'task' ? 'Add task' : 'Quick add';
+  const title = mode === 'expense' ? 'Add expense' : mode === 'task' ? 'Add task' : mode === 'time' ? 'Add time' : 'Quick add';
 
   return (
     <BottomSheet open={open} onClose={close} title={title}>
@@ -65,6 +67,7 @@ export default function QuickAdd({ open, onClose, tabs = {} }) {
       )}
       {mode === 'expense' && <AddExpenseForm onDone={close} />}
       {mode === 'task' && <AddTaskForm onDone={close} />}
+      {mode === 'time' && <AddTimeEntryForm onDone={close} />}
     </BottomSheet>
   );
 }

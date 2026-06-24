@@ -1,10 +1,11 @@
 import { NavLink } from 'react-router-dom';
-import { Home, Wallet, ListChecks, Dumbbell, Target } from 'lucide-react';
+import { Home, Wallet, ListChecks, Dumbbell, Target, Clock3 } from 'lucide-react';
 
 const ALL_TABS = [
   { to: '/', icon: Home, label: 'Today', accent: 'rgb(var(--brand))', end: true, always: true },
   { to: '/money', id: 'money', icon: Wallet, label: 'Money', accent: 'rgb(var(--money))' },
   { to: '/tasks', id: 'tasks', icon: ListChecks, label: 'Tasks', accent: 'rgb(var(--tasks))' },
+  { to: '/time', id: 'time', icon: Clock3, label: 'Time', accent: 'rgb(var(--time))' },
   { to: '/gym', id: 'gym', icon: Dumbbell, label: 'Gym', accent: 'rgb(var(--gym))' },
   { to: '/goals', id: 'goals', icon: Target, label: 'Goals', accent: 'rgb(var(--goals))' },
 ];

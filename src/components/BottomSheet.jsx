@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 
 export default function BottomSheet({ open, onClose, title, children }) {
+  const frameRef = useRef(null);
   const panelRef = useRef(null);
   const scrollRef = useRef(null);
 
@@ -22,34 +24,20 @@ export default function BottomSheet({ open, onClose, title, children }) {
 
   useEffect(() => {
     if (!open) return undefined;
-    const scrollY = window.scrollY;
     const previous = {
-      left: document.body.style.left,
-      overflow: document.body.style.overflow,
-      paddingRight: document.body.style.paddingRight,
-      position: document.body.style.position,
-      right: document.body.style.right,
-      top: document.body.style.top,
-      width: document.body.style.width,
+      bodyOverflow: document.body.style.overflow,
+      bodyPaddingRight: document.body.style.paddingRight,
+      htmlOverflow: document.documentElement.style.overflow,
     };
+    document.documentElement.style.overflow = 'hidden';
     document.body.style.overflow = 'hidden';
     document.body.style.paddingRight = '0px';
-    document.body.style.position = 'fixed';
-    document.body.style.top = `-${scrollY}px`;
-    document.body.style.left = '0';
-    document.body.style.right = '0';
-    document.body.style.width = '100%';
     const onKey = (e) => e.key === 'Escape' && onClose?.();
     window.addEventListener('keydown', onKey);
     return () => {
-      document.body.style.left = previous.left;
-      document.body.style.overflow = previous.overflow;
-      document.body.style.paddingRight = previous.paddingRight;
-      document.body.style.position = previous.position;
-      document.body.style.right = previous.right;
-      document.body.style.top = previous.top;
-      document.body.style.width = previous.width;
-      window.scrollTo(0, scrollY);
+      document.body.style.overflow = previous.bodyOverflow;
+      document.body.style.paddingRight = previous.bodyPaddingRight;
+      document.documentElement.style.overflow = previous.htmlOverflow;
       window.removeEventListener('keydown', onKey);
     };
   }, [open, onClose]);
@@ -57,11 +45,14 @@ export default function BottomSheet({ open, onClose, title, children }) {
   useEffect(() => {
     if (!open || !window.visualViewport) return undefined;
     const syncViewport = () => {
+      const frame = frameRef.current;
       const panel = panelRef.current;
-      if (!panel) return;
-      const keyboardInset = Math.max(0, window.innerHeight - window.visualViewport.height - window.visualViewport.offsetTop);
+      if (!panel || !frame) return;
+      const viewportHeight = window.visualViewport.height;
+      frame.style.height = `${viewportHeight}px`;
+      frame.style.top = `${window.visualViewport.offsetTop}px`;
+      frame.style.bottom = 'auto';
       panel.style.maxHeight = `${Math.max(320, window.visualViewport.height - 24)}px`;
-      panel.style.marginBottom = `${keyboardInset}px`;
     };
     syncViewport();
     window.visualViewport.addEventListener('resize', syncViewport);
@@ -71,15 +62,19 @@ export default function BottomSheet({ open, onClose, title, children }) {
       window.visualViewport.removeEventListener('scroll', syncViewport);
       if (panelRef.current) {
         panelRef.current.style.maxHeight = '';
-        panelRef.current.style.marginBottom = '';
+      }
+      if (frameRef.current) {
+        frameRef.current.style.height = '';
+        frameRef.current.style.top = '';
+        frameRef.current.style.bottom = '';
       }
     };
   }, [open]);
 
   if (!open) return null;
 
-  return (
-    <div className="fixed inset-0 z-50 grid items-end justify-items-center p-3 sm:items-center sm:p-6" role="dialog" aria-modal="true" aria-label={title}>
+  const sheet = (
+    <div ref={frameRef} className="fixed inset-x-0 top-0 z-50 grid h-[100dvh] items-end justify-items-center p-3 sm:items-center sm:p-6" role="dialog" aria-modal="true" aria-label={title}>
       <button aria-hidden="true" tabIndex={-1} className="absolute inset-0 bg-black/45 backdrop-blur-sm" onClick={onClose} />
       <div
         ref={panelRef}
@@ -101,4 +96,6 @@ export default function BottomSheet({ open, onClose, title, children }) {
       </div>
     </div>
   );
+
+  return createPortal(sheet, document.body);
 }

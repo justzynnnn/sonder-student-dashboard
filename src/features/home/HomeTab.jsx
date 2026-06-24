@@ -5,6 +5,7 @@ import {
   ArrowUpRight,
   CalendarCheck,
   CheckCircle2,
+  Clock3,
   Dumbbell,
   Flame,
   Heart,
@@ -28,6 +29,7 @@ import { overallGoalProgress } from '../../data/goals';
 import { buildRecap, recapHeadline } from '../../lib/recap';
 import { greeting, messageOfTheDay } from '../../lib/encouragement';
 import { todayISO } from '../../lib/dates';
+import { entriesToday, formatDuration, totalMinutes } from '../../data/time';
 
 export default function HomeTab({ streak = 0, tabs = {} }) {
   const navigate = useNavigate();
@@ -40,7 +42,7 @@ export default function HomeTab({ streak = 0, tabs = {} }) {
   const sessions = useLiveQuery(() => db.sessions.toArray(), [], []);
   const goals = useLiveQuery(() => db.goals.toArray(), [], []);
   const milestones = useLiveQuery(() => db.milestones.toArray(), [], []);
-  const savings = useLiveQuery(() => db.savings.toArray(), [], []);
+  const timeEntries = useLiveQuery(() => db.timeEntries.toArray(), [], []);
 
   const money = moneyOverview(accounts || [], expenses || []);
   const taskProgress = todayProgress(tasks || []);
@@ -49,10 +51,11 @@ export default function HomeTab({ streak = 0, tabs = {} }) {
   const gymDays = weekConsistency(sessions || []);
   const didToday = (gymDays.find((d) => d.date === todayISO()) || {}).done;
   const goalProgress = overallGoalProgress(goals || [], milestones || []);
+  const todayTime = totalMinutes(entriesToday(timeEntries || []));
 
   const recap = useMemo(
-    () => buildRecap({ expenses: expenses || [], tasks: tasks || [], sessions: sessions || [], savings: savings || [] }),
-    [expenses, tasks, sessions, savings],
+    () => buildRecap({ expenses: expenses || [], tasks: tasks || [], sessions: sessions || [], timeEntries: timeEntries || [] }),
+    [expenses, tasks, sessions, timeEntries],
   );
 
   const motd = messageOfTheDay({ streak, tasksToday: taskProgress, money });
@@ -137,6 +140,18 @@ export default function HomeTab({ streak = 0, tabs = {} }) {
             meta={<WeekDots days={gymDays} />}
           />
         ) : null}
+
+        {tabs.time ? (
+          <StatCard
+            icon={Clock3}
+            accent="rgb(var(--time))"
+            label="Time"
+            value={todayTime ? formatDuration(todayTime) : 'Notice'}
+            sub={todayTime ? 'Logged today.' : 'Track where today goes.'}
+            onClick={() => navigate('/time')}
+            meta={<StatPill icon={Sparkles} label="Aware" accent="rgb(var(--time))" />}
+          />
+        ) : null}
       </section>
 
       {tabs.goals ? (
@@ -198,6 +213,7 @@ function GentleRecap({ tabs, recap, headline, goalProgress, currency }) {
   const stats = [];
   if (tabs.tasks) stats.push({ key: 'tasks', icon: CheckCircle2, label: 'Done', value: recap.tasksDone, accent: 'rgb(var(--tasks))' });
   if (tabs.money) stats.push({ key: 'spent', icon: Wallet, label: 'Spent', value: formatMoney(recap.spent, currency, { compact: true }), accent: 'rgb(var(--money))' });
+  if (tabs.time) stats.push({ key: 'time', icon: Clock3, label: 'Aware', value: formatDuration(recap.timeMinutes), accent: 'rgb(var(--time))' });
   if (tabs.gym) stats.push({ key: 'gym', icon: CalendarCheck, label: 'Moved', value: recap.workouts, accent: 'rgb(var(--gym))' });
   if (tabs.goals) stats.push({ key: 'goals', icon: Target, label: 'Growing', value: `${Math.round(goalProgress * 100)}%`, accent: 'rgb(var(--goals))' });
   if (!stats.length) return null;
