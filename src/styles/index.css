@@ -173,9 +173,64 @@ input[type='time'].input::-webkit-calendar-picker-indicator {
   }
 }
 
+@keyframes sheet-backdrop-in {
+  from {
+    opacity: 0;
+    backdrop-filter: blur(0);
+  }
+  to {
+    opacity: 1;
+    backdrop-filter: blur(8px);
+  }
+}
+
+@keyframes sheet-panel-in {
+  0% {
+    opacity: 0;
+    transform: translateY(2.25rem) scale(0.96);
+  }
+  62% {
+    opacity: 1;
+    transform: translateY(-0.28rem) scale(1.012);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes add-symbol-pop {
+  0% {
+    transform: rotate(0deg) scale(1);
+  }
+  55% {
+    transform: rotate(90deg) scale(1.12);
+  }
+  100% {
+    transform: rotate(90deg) scale(1);
+  }
+}
+
+@keyframes add-press-ring {
+  0% {
+    opacity: 0.36;
+    transform: translate(-50%, -50%) scale(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(2.4);
+  }
+}
+
 .bottom-sheet-panel {
   max-height: min(92vh, calc(100vh - env(safe-area-inset-top) - 1.5rem));
   overscroll-behavior: contain;
+  transform-origin: 50% 100%;
+  animation: sheet-panel-in 360ms cubic-bezier(0.2, 0.9, 0.22, 1) both;
+}
+
+.bottom-sheet-backdrop {
+  animation: sheet-backdrop-in 220ms ease-out both;
 }
 
 .bottom-sheet-scroll {
@@ -186,6 +241,21 @@ input[type='time'].input::-webkit-calendar-picker-indicator {
 @supports (height: 100dvh) {
   .bottom-sheet-panel {
     max-height: min(92dvh, calc(100dvh - env(safe-area-inset-top) - 1.5rem));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bottom-sheet-backdrop,
+  .bottom-sheet-panel,
+  .btn-add:active::after,
+  .btn-add-primary:active::after,
+  .btn-add-soft:active::after,
+  .btn-icon-add:active::after,
+  .btn-add:active .add-symbol,
+  .btn-add-primary:active .add-symbol,
+  .btn-add-soft:active .add-symbol-soft,
+  .btn-icon-add:active svg {
+    animation: none;
   }
 }
 
@@ -235,19 +305,19 @@ input[type='time'].input::-webkit-calendar-picker-indicator {
   }
 
   .btn-add {
-    @apply btn rounded-[1.35rem] border border-brand/20 bg-surface text-brand shadow-card hover:border-brand/35 hover:bg-brand/10;
+    @apply btn relative overflow-hidden rounded-[1.35rem] border border-brand/20 bg-surface text-brand shadow-card hover:border-brand/35 hover:bg-brand/10;
   }
 
   .btn-add-primary {
-    @apply btn rounded-[1.35rem] border border-white/10 bg-gradient-to-br from-brand to-brand-2 px-5 text-white shadow-glow hover:brightness-110;
+    @apply btn relative overflow-hidden rounded-[1.35rem] border border-white/10 bg-gradient-to-br from-brand to-brand-2 px-5 text-white shadow-glow hover:brightness-110;
   }
 
   .btn-add-soft {
-    @apply btn rounded-[1.15rem] border border-line/70 bg-surface-2 px-3 text-muted hover:border-brand/25 hover:bg-brand/10 hover:text-brand;
+    @apply btn relative overflow-hidden rounded-[1.15rem] border border-line/70 bg-surface-2 px-3 text-muted hover:border-brand/25 hover:bg-brand/10 hover:text-brand;
   }
 
   .btn-icon-add {
-    @apply grid h-12 w-12 shrink-0 place-items-center rounded-[1.15rem] border border-line/70 bg-surface-2 text-muted transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/35 hover:border-brand/25 hover:bg-brand/10 hover:text-brand active:scale-95 disabled:cursor-not-allowed disabled:opacity-50;
+    @apply relative grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-[1.15rem] border border-line/70 bg-surface-2 text-muted transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/35 hover:border-brand/25 hover:bg-brand/10 hover:text-brand active:scale-95 disabled:cursor-not-allowed disabled:opacity-50;
   }
 
   .add-symbol {
@@ -256,6 +326,45 @@ input[type='time'].input::-webkit-calendar-picker-indicator {
 
   .add-symbol-soft {
     @apply grid h-6 w-6 shrink-0 place-items-center rounded-full bg-brand/10 text-brand;
+  }
+
+  .btn-add::after,
+  .btn-add-primary::after,
+  .btn-add-soft::after,
+  .btn-icon-add::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 3.4rem;
+    height: 3.4rem;
+    border-radius: 9999px;
+    background: currentColor;
+    opacity: 0;
+    pointer-events: none;
+    transform: translate(-50%, -50%) scale(0);
+  }
+
+  .btn-add:active,
+  .btn-add-primary:active,
+  .btn-add-soft:active,
+  .btn-icon-add:active {
+    transform: translateY(1px) scale(0.965);
+    filter: saturate(1.08);
+  }
+
+  .btn-add:active::after,
+  .btn-add-primary:active::after,
+  .btn-add-soft:active::after,
+  .btn-icon-add:active::after {
+    animation: add-press-ring 420ms ease-out;
+  }
+
+  .btn-add:active .add-symbol,
+  .btn-add-primary:active .add-symbol,
+  .btn-add-soft:active .add-symbol-soft,
+  .btn-icon-add:active svg {
+    animation: add-symbol-pop 300ms ease-out both;
   }
 
   .chip {

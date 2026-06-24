@@ -74,8 +74,8 @@ export default function BottomSheet({ open, onClose, title, children }) {
   if (!open) return null;
 
   const sheet = (
-    <div ref={frameRef} className="fixed inset-x-0 top-0 z-50 grid h-[100dvh] items-end justify-items-center p-3 sm:items-center sm:p-6" role="dialog" aria-modal="true" aria-label={title}>
-      <button aria-hidden="true" tabIndex={-1} className="absolute inset-0 bg-black/45 backdrop-blur-sm" onClick={onClose} />
+    <div ref={frameRef} className="bottom-sheet-frame fixed inset-x-0 top-0 z-50 grid h-[100dvh] items-end justify-items-center p-3 sm:items-center sm:p-6" role="dialog" aria-modal="true" aria-label={title}>
+      <button aria-hidden="true" tabIndex={-1} className="bottom-sheet-backdrop absolute inset-0 bg-black/45 backdrop-blur-sm" onClick={onClose} />
       <div
         ref={panelRef}
         className="bottom-sheet-panel relative flex w-full max-w-lg flex-col overflow-hidden rounded-[1.75rem] border border-line/80 bg-surface shadow-2xl"
