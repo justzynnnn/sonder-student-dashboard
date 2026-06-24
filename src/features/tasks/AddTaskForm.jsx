@@ -1,20 +1,27 @@
 import { useState } from 'react';
-import { Plus } from 'lucide-react';
-import { addTask } from '../../data/tasks';
+import { Plus, Check } from 'lucide-react';
+import { addTask, updateTask } from '../../data/tasks';
+import { addRecurrence } from '../../data/recurrences';
 import { useFeedback } from '../../components/Feedback';
 import CategoryPicker from '../../components/CategoryPicker';
+import RepeatPicker from '../../components/RepeatPicker';
+import { todayISO } from '../../lib/dates';
 
 const PRIORITY_OPTS = [
   { id: 'low', label: 'Low', color: '#10b981' },
   { id: 'med', label: 'Medium', color: '#f59e0b' },
   { id: 'high', label: 'High', color: '#ef4444' },
 ];
-export default function AddTaskForm({ onDone, defaultDueDate = '' }) {
+
+// Doubles as add + edit. Pass `editing` (a task row) to edit it in place.
+export default function AddTaskForm({ onDone, defaultDueDate = '', editing = null }) {
+  const isEdit = !!editing;
   const { toast } = useFeedback();
-  const [title, setTitle] = useState('');
-  const [priority, setPriority] = useState('med');
-  const [category, setCategory] = useState('School');
-  const [dueDate, setDueDate] = useState(defaultDueDate);
+  const [title, setTitle] = useState(editing?.title ?? '');
+  const [priority, setPriority] = useState(editing?.priority ?? 'med');
+  const [category, setCategory] = useState(editing?.category ?? 'School');
+  const [dueDate, setDueDate] = useState(editing?.dueDate ?? defaultDueDate);
+  const [repeat, setRepeat] = useState('none');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
@@ -24,8 +31,21 @@ export default function AddTaskForm({ onDone, defaultDueDate = '' }) {
     setBusy(true);
     setError('');
     try {
-      await addTask({ title, priority, category, dueDate });
-      toast('Task added', 'good');
+      if (isEdit) {
+        await updateTask(editing.id, { title, priority, category, dueDate });
+        toast('Task updated', 'good');
+      } else if (repeat === 'none') {
+        await addTask({ title, priority, category, dueDate });
+        toast('Task added', 'good');
+      } else {
+        await addRecurrence({
+          kind: 'task',
+          cadence: repeat,
+          template: { title, priority, category },
+          startDate: dueDate || todayISO(),
+        });
+        toast('Repeating task set', 'good');
+      }
       onDone?.();
     } catch (err) {
       setError(err.message);
@@ -40,7 +60,7 @@ export default function AddTaskForm({ onDone, defaultDueDate = '' }) {
 
       <div>
         <label className="label">Task</label>
-        <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Finish lab report" className="input" maxLength={100} />
+        <input autoFocus value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Finish lab report" className="input" maxLength={100} />
       </div>
 
       <div>
@@ -70,14 +90,16 @@ export default function AddTaskForm({ onDone, defaultDueDate = '' }) {
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <CategoryPicker domain="tasks" value={category} onChange={setCategory} />
         <div>
-          <label className="label">Due (optional)</label>
+          <label className="label">{repeat === 'none' || isEdit ? 'Due (optional)' : 'Starts'}</label>
           <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className="input" />
         </div>
       </div>
 
+      {!isEdit ? <RepeatPicker value={repeat} onChange={setRepeat} accent="rgb(var(--tasks))" /> : null}
+
       <button type="submit" disabled={busy} className="btn-add-primary w-full">
-        {!busy && <span className="add-symbol"><Plus size={16} /></span>}
-        {busy ? 'Saving...' : 'Add task'}
+        {!busy && <span className="add-symbol">{isEdit ? <Check size={16} /> : <Plus size={16} />}</span>}
+        {busy ? 'Saving...' : isEdit ? 'Save changes' : repeat === 'none' ? 'Add task' : 'Set repeating task'}
       </button>
     </form>
   );

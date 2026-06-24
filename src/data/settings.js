@@ -20,6 +20,8 @@ export const DEFAULT_SETTINGS = {
   name: '',
   baseCurrency: DEFAULT_CURRENCY,
   tabs: { ...DEFAULT_TABS },
+  reminderEnabled: false,
+  reminderTime: '19:00',
   onboarded: false,
   createdAt: null,
 };

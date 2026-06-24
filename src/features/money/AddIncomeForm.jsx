@@ -2,25 +2,26 @@ import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Plus, Check } from 'lucide-react';
 import { db } from '../../data/db';
-import { addExpense, updateExpense } from '../../data/money';
+import { addIncome, updateIncome } from '../../data/money';
 import { addRecurrence } from '../../data/recurrences';
 import { useSettings } from '../../hooks/useSettings';
 import { useFeedback } from '../../components/Feedback';
-import CategoryPicker from '../../components/CategoryPicker';
 import RepeatPicker from '../../components/RepeatPicker';
 import { currencySymbol, formatMoney } from '../../lib/currency';
 import { todayISO } from '../../lib/dates';
 
-// Doubles as add + edit. Pass `editing` (an expense row) to edit it in place.
-export default function AddExpenseForm({ onDone, editing = null }) {
+const SOURCES = ['Allowance', 'Part-time', 'Scholarship', 'Gift', 'Other'];
+
+// Money coming in — allowance, part-time pay, financial aid. Supports repeat so
+// a monthly allowance/payday lands automatically.
+export default function AddIncomeForm({ onDone, editing = null }) {
   const isEdit = !!editing;
   const { settings } = useSettings();
   const { celebrate, toast } = useFeedback();
   const accounts = useLiveQuery(() => db.accounts.toArray(), [], []);
 
   const [amount, setAmount] = useState(editing ? String(editing.amount) : '');
-  const [category, setCategory] = useState(editing?.category ?? 'Food');
-  const [description, setDescription] = useState(editing?.description ?? '');
+  const [source, setSource] = useState(editing?.source ?? 'Allowance');
   const [accountId, setAccountId] = useState(editing?.accountId ?? '');
   const [date, setDate] = useState(editing?.date ?? todayISO());
   const [repeat, setRepeat] = useState('none');
@@ -34,19 +35,19 @@ export default function AddExpenseForm({ onDone, editing = null }) {
     setError('');
     try {
       if (isEdit) {
-        await updateExpense(editing.id, { amount, category, description, date, accountId: accountId || null });
-        toast('Expense updated', 'good');
+        await updateIncome(editing.id, { amount, source, date, accountId: accountId || null });
+        toast('Income updated', 'good');
       } else if (repeat === 'none') {
-        await addExpense({ amount, category, description, date, accountId: accountId || null });
-        celebrate('Logged');
+        await addIncome({ amount, source, date, accountId: accountId || null });
+        celebrate('Income added');
       } else {
         await addRecurrence({
-          kind: 'expense',
+          kind: 'income',
           cadence: repeat,
-          template: { amount, category, description, accountId: accountId || null },
+          template: { amount, source, accountId: accountId || null },
           startDate: date || todayISO(),
         });
-        toast('Repeating expense set', 'good');
+        toast('Repeating income set', 'good');
       }
       onDone?.();
     } catch (err) {
@@ -67,27 +68,32 @@ export default function AddExpenseForm({ onDone, editing = null }) {
         <label className="label">Amount</label>
         <div className="relative">
           <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-lg font-bold text-muted">{sym}</span>
-          <input
-            type="number"
-            inputMode="decimal"
-            step="0.01"
-            min="0"
-            autoFocus
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-            placeholder="0.00"
-            className="input pl-9 text-lg font-bold"
-          />
+          <input type="number" inputMode="decimal" step="0.01" min="0" autoFocus value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0.00" className="input pl-9 text-lg font-bold" />
         </div>
       </div>
 
       <div>
-        <CategoryPicker domain="money" value={category} onChange={setCategory} />
-      </div>
-
-      <div>
-        <label className="label">Note (optional)</label>
-        <input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="What was it for?" className="input" maxLength={80} />
+        <label className="label">Source</label>
+        <div className="flex flex-wrap gap-2">
+          {SOURCES.map((s) => {
+            const active = s === source;
+            return (
+              <button
+                key={s}
+                type="button"
+                onClick={() => setSource(s)}
+                className="chip border transition"
+                style={{
+                  borderColor: active ? 'rgb(var(--money))' : 'rgb(var(--line))',
+                  background: active ? 'color-mix(in srgb, rgb(var(--money)) 16%, transparent)' : 'rgb(var(--surface-2))',
+                  color: active ? 'rgb(var(--money))' : 'rgb(var(--muted))',
+                }}
+              >
+                {s}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -96,18 +102,14 @@ export default function AddExpenseForm({ onDone, editing = null }) {
           <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="input" />
         </div>
         <div>
-          <label className="label">Account</label>
+          <label className="label">Into account</label>
           <select value={accountId} onChange={(e) => setAccountId(e.target.value)} className="input">
             <option value="">None</option>
-            {(accounts || []).map((account) => {
-              const isCredit = account.type === 'credit';
-              const due = account.balance || 0;
-              const available = Math.max(0, (account.creditLimit || 0) - due);
-              const detail = isCredit
-                ? `Due ${formatMoney(due, settings.baseCurrency)} / avail ${formatMoney(available, settings.baseCurrency)}`
-                : formatMoney(account.balance || 0, settings.baseCurrency);
-              return <option key={account.id} value={account.id}>{account.name} - {detail}</option>;
-            })}
+            {(accounts || []).map((account) => (
+              <option key={account.id} value={account.id}>
+                {account.name} - {account.type === 'credit' ? `Due ${formatMoney(account.balance || 0, settings.baseCurrency)}` : formatMoney(account.balance || 0, settings.baseCurrency)}
+              </option>
+            ))}
           </select>
         </div>
       </div>
@@ -116,7 +118,7 @@ export default function AddExpenseForm({ onDone, editing = null }) {
 
       <button type="submit" disabled={busy} className="btn-add-primary w-full">
         {!busy && <span className="add-symbol">{isEdit ? <Check size={16} /> : <Plus size={16} />}</span>}
-        {busy ? 'Saving...' : isEdit ? 'Save changes' : repeat === 'none' ? 'Add expense' : 'Set repeating expense'}
+        {busy ? 'Saving...' : isEdit ? 'Save changes' : repeat === 'none' ? 'Add income' : 'Set repeating income'}
       </button>
     </form>
   );

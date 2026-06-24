@@ -1,11 +1,14 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../data/db';
 import { useSettings } from '../hooks/useSettings';
-import { recordCheckin } from '../data/checkins';
 import { seedQuotesIfEmpty } from '../data/quotes';
+import { materializeRecurrences } from '../data/recurrences';
+import { requestPersistentStorage } from '../data/admin';
+import { maybeRemind } from '../lib/reminders';
 import { computeStreak } from '../lib/streaks';
+import { todayISO } from '../lib/dates';
 import { FeedbackProvider } from '../components/Feedback';
 
 import AppLayout from './AppLayout';
@@ -32,10 +35,25 @@ export default function App() {
   const { settings, loading } = useSettings();
   const checkins = useLiveQuery(() => db.checkins.toArray(), [], []);
 
-  // Daily check-in + first-run seed. Runs once on mount.
+  // First-run seed, catch up repeating items, and ask to keep data durable.
+  // NOTE: no auto check-in — the streak is earned by real actions (logging an
+  // expense, finishing a task, a workout, a habit), not by merely opening the app.
   useEffect(() => {
-    recordCheckin();
     seedQuotesIfEmpty();
+    materializeRecurrences();
+    requestPersistentStorage();
+  }, []);
+
+  // Daily reminder: re-checked every minute against the latest settings/checkins.
+  const remindRef = useRef(() => {});
+  remindRef.current = () => {
+    const checkedInToday = (checkins || []).some((c) => c.date === todayISO());
+    maybeRemind(settings, checkedInToday);
+  };
+  useEffect(() => {
+    remindRef.current();
+    const id = setInterval(() => remindRef.current(), 60_000);
+    return () => clearInterval(id);
   }, []);
 
   const streak = useMemo(

@@ -1,5 +1,6 @@
 import { db } from './db';
 import { generateId } from '../lib/ids';
+import { recordCheckin } from './checkins';
 import { sanitizeText, sanitizeInt, sanitizeAmount } from '../lib/sanitize';
 import { todayISO, weekDates } from '../lib/dates';
 
@@ -71,6 +72,7 @@ export async function saveSession(session) {
     })),
   };
   await db.sessions.put(clean);
+  recordCheckin(); // logging a workout earns today's check-in
   return clean;
 }
 

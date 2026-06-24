@@ -1,18 +1,28 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { Clock3, Plus, Sparkles, Trash2 } from 'lucide-react';
+import { Clock3, Pencil, Play, Plus, Search, Sparkles, Square, Trash2, TrendingUp } from 'lucide-react';
 import { db } from '../../data/db';
 import { useFeedback } from '../../components/Feedback';
 import BottomSheet from '../../components/BottomSheet';
 import CategoryPicker from '../../components/CategoryPicker';
 import EmptyState from '../../components/EmptyState';
 import ProgressRing from '../../components/ProgressRing';
+import MiniBars from '../../components/MiniBars';
 import { domainCategoryMeta } from '../../data/categories';
-import { addTimeEntry, deleteTimeEntry, entriesInWeek, entriesToday, formatDuration, timeByCategory, totalMinutes } from '../../data/time';
-import { humanDate, todayISO } from '../../lib/dates';
+import {
+  addTimeEntry, updateTimeEntry, deleteTimeEntry, entriesInWeek, entriesToday,
+  formatDuration, timeByCategory, totalMinutes, minutesByDayThisWeek,
+} from '../../data/time';
+import { humanDate, todayISO, WEEKDAY_LABELS } from '../../lib/dates';
+
+const TIMER_KEY = 'sonder-timer-start';
+const hhmm = (d) => `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 
 export default function TimeTab() {
   const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState(null);
+  const [prefill, setPrefill] = useState(null);
+  const [query, setQuery] = useState('');
   const entries = useLiveQuery(() => db.timeEntries.orderBy('date').reverse().toArray(), [], []);
   const customCategories = useLiveQuery(() => db.customCategories.where('domain').equals('time').toArray(), [], []);
   const today = entriesToday(entries || []);
@@ -20,11 +30,29 @@ export default function TimeTab() {
   const todayMinutes = totalMinutes(today);
   const weekMinutes = totalMinutes(week);
   const byCategory = useMemo(() => timeByCategory(week), [week]);
+  const dayTrend = useMemo(() => minutesByDayThisWeek(entries || []), [entries]);
   const target = 8 * 60;
+
+  const recent = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    const rows = entries || [];
+    if (!q) return rows;
+    return rows.filter((e) => `${e.description || ''} ${e.category || ''}`.toLowerCase().includes(q));
+  }, [entries, query]);
+
+  // Timer stops into a prefilled add form so the user can name/categorise it.
+  const onTimerStop = (startISO) => {
+    const start = new Date(startISO);
+    const end = new Date();
+    setPrefill({ date: todayISO(start), startTime: hhmm(start), endTime: hhmm(end), description: '', category: '' });
+    setOpen(true);
+  };
 
   return (
     <div className="animate-fade-up space-y-4">
       <h1 className="font-display text-2xl font-extrabold tracking-tight">Time</h1>
+
+      <LiveTimer onStop={onTimerStop} />
 
       <div className="card-pad">
         <div className="flex items-center gap-5">
@@ -75,48 +103,135 @@ export default function TimeTab() {
         )}
       </Section>
 
+      {dayTrend.some((d) => d.minutes > 0) ? (
+        <Section title="By day">
+          <div className="card-pad">
+            <div className="mb-3 flex items-center gap-2">
+              <TrendingUp size={16} className="text-brand" />
+              <p className="text-sm font-semibold">Minutes logged this week</p>
+            </div>
+            <MiniBars data={dayTrend.map((d, i) => ({ value: d.minutes, label: WEEKDAY_LABELS[i] }))} color="rgb(var(--brand))" format={(v) => formatDuration(v)} />
+          </div>
+        </Section>
+      ) : null}
+
       <Section title="Recent">
         {(entries || []).length === 0 ? (
-          <EmptyState icon={Clock3} title="No time logged yet" hint="Add the first range when you are ready." />
+          <EmptyState icon={Clock3} title="No time logged yet" hint="Start the timer or add a range when you are ready." />
         ) : (
-          <ul className="space-y-2">
-            {(entries || []).slice(0, 14).map((entry) => {
-              const meta = domainCategoryMeta('time', entry.category || 'Uncategorized', customCategories || []);
-              return (
-                <li key={entry.id} className="card flex items-center gap-3 p-3">
-                  <span className="h-9 w-1.5 shrink-0 rounded-full" style={{ background: meta.color }} />
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-semibold">{entry.description}</p>
-                    <p className="text-xs text-muted">{humanDate(entry.date)} - {entry.startTime}-{entry.endTime}{entry.category ? ` - ${entry.category}` : ''}</p>
-                  </div>
-                  <span className="font-display text-sm font-extrabold">{formatDuration(entry.minutes)}</span>
-                  <button onClick={() => deleteTimeEntry(entry.id)} aria-label="Delete" className="text-muted hover:text-rose-500"><Trash2 size={15} /></button>
-                </li>
-              );
-            })}
-          </ul>
+          <>
+            <div className="relative mb-2">
+              <Search size={16} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-muted" />
+              <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search entries" className="input pl-10" />
+            </div>
+            {recent.length === 0 ? (
+              <p className="px-1 py-3 text-sm text-muted">No matches for “{query}”.</p>
+            ) : (
+              <ul className="space-y-2">
+                {recent.slice(0, 20).map((entry) => {
+                  const meta = domainCategoryMeta('time', entry.category || 'Uncategorized', customCategories || []);
+                  return (
+                    <li key={entry.id} className="card flex items-center gap-3 p-3">
+                      <span className="h-9 w-1.5 shrink-0 rounded-full" style={{ background: meta.color }} />
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-semibold">{entry.description}</p>
+                        <p className="text-xs text-muted">{humanDate(entry.date)} - {entry.startTime}-{entry.endTime}{entry.category ? ` - ${entry.category}` : ''}</p>
+                      </div>
+                      <span className="font-display text-sm font-extrabold">{formatDuration(entry.minutes)}</span>
+                      <button onClick={() => setEditing(entry)} aria-label="Edit" className="text-muted hover:text-ink"><Pencil size={15} /></button>
+                      <button onClick={() => deleteTimeEntry(entry.id)} aria-label="Delete" className="text-muted hover:text-rose-500"><Trash2 size={15} /></button>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </>
         )}
       </Section>
 
-      <button onClick={() => setOpen(true)} className="btn-add-primary w-full">
+      <button onClick={() => { setPrefill(null); setOpen(true); }} className="btn-add-primary w-full">
         <span className="add-symbol"><Plus size={16} /></span>
         Add time
       </button>
 
-      <BottomSheet open={open} onClose={() => setOpen(false)} title="Add time">
-        <AddTimeEntryForm onDone={() => setOpen(false)} />
+      <BottomSheet open={open} onClose={() => { setOpen(false); setPrefill(null); }} title="Add time">
+        <AddTimeEntryForm initial={prefill} onDone={() => { setOpen(false); setPrefill(null); }} />
+      </BottomSheet>
+
+      <BottomSheet open={!!editing} onClose={() => setEditing(null)} title="Edit time">
+        {editing ? <AddTimeEntryForm editing={editing} onDone={() => setEditing(null)} /> : null}
       </BottomSheet>
     </div>
   );
 }
 
-export function AddTimeEntryForm({ onDone }) {
+function LiveTimer({ onStop }) {
+  const [startISO, setStartISO] = useState(() => {
+    try { return localStorage.getItem(TIMER_KEY); } catch { return null; }
+  });
+  const [, setTick] = useState(0);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    if (!startISO) return undefined;
+    ref.current = setInterval(() => setTick((t) => t + 1), 1000);
+    return () => clearInterval(ref.current);
+  }, [startISO]);
+
+  const start = () => {
+    const iso = new Date().toISOString();
+    try { localStorage.setItem(TIMER_KEY, iso); } catch { /* ignore */ }
+    setStartISO(iso);
+  };
+
+  const stop = () => {
+    const iso = startISO;
+    try { localStorage.removeItem(TIMER_KEY); } catch { /* ignore */ }
+    setStartISO(null);
+    if (iso) onStop(iso);
+  };
+
+  if (!startISO) {
+    return (
+      <button onClick={start} className="card-pad flex w-full items-center gap-3 text-left transition active:scale-[0.99]">
+        <span className="grid h-11 w-11 place-items-center rounded-2xl bg-brand/15 text-brand"><Play size={20} /></span>
+        <div>
+          <p className="font-bold">Start a timer</p>
+          <p className="text-sm text-muted">One tap now, name it when you stop.</p>
+        </div>
+      </button>
+    );
+  }
+
+  const elapsed = Math.max(0, Math.floor((Date.now() - new Date(startISO).getTime()) / 1000));
+  const h = Math.floor(elapsed / 3600);
+  const m = Math.floor((elapsed % 3600) / 60);
+  const s = elapsed % 60;
+  const clock = `${h ? `${h}:` : ''}${String(m).padStart(h ? 2 : 1, '0')}:${String(s).padStart(2, '0')}`;
+
+  return (
+    <div className="card-pad flex items-center gap-3">
+      <span className="grid h-11 w-11 place-items-center rounded-2xl bg-brand/15 text-brand">
+        <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-brand" />
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="section-title">Timing now</p>
+        <p className="font-display text-2xl font-extrabold tabular-nums">{clock}</p>
+      </div>
+      <button onClick={stop} className="btn-primary h-11 !px-4"><Square size={16} /> Stop</button>
+    </div>
+  );
+}
+
+export function AddTimeEntryForm({ onDone, editing = null, initial = null }) {
+  const isEdit = !!editing;
+  const seed = editing || initial || {};
   const { toast } = useFeedback();
-  const [date, setDate] = useState(todayISO());
-  const [startTime, setStartTime] = useState('09:00');
-  const [endTime, setEndTime] = useState('10:00');
-  const [description, setDescription] = useState('');
-  const [category, setCategory] = useState('');
+  const [date, setDate] = useState(seed.date || todayISO());
+  const [startTime, setStartTime] = useState(seed.startTime || '09:00');
+  const [endTime, setEndTime] = useState(seed.endTime || '10:00');
+  const [description, setDescription] = useState(seed.description || '');
+  const [category, setCategory] = useState(seed.category || '');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
@@ -126,8 +241,13 @@ export function AddTimeEntryForm({ onDone }) {
     setBusy(true);
     setError('');
     try {
-      await addTimeEntry({ date, startTime, endTime, description, category });
-      toast('Time logged', 'good');
+      if (isEdit) {
+        await updateTimeEntry(editing.id, { date, startTime, endTime, description, category });
+        toast('Time updated', 'good');
+      } else {
+        await addTimeEntry({ date, startTime, endTime, description, category });
+        toast('Time logged', 'good');
+      }
       onDone?.();
     } catch (err) {
       setError(err.message);
@@ -168,7 +288,7 @@ export function AddTimeEntryForm({ onDone }) {
       <CategoryPicker domain="time" value={category} onChange={setCategory} label="Category (optional)" optional />
       <button type="submit" disabled={busy} className="btn-add-primary w-full">
         {!busy && <span className="add-symbol"><Plus size={16} /></span>}
-        {busy ? 'Saving...' : 'Add time'}
+        {busy ? 'Saving...' : isEdit ? 'Save changes' : 'Add time'}
       </button>
     </form>
   );

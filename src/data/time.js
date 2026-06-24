@@ -1,7 +1,8 @@
 import { db } from './db';
 import { generateId } from '../lib/ids';
+import { recordCheckin } from './checkins';
 import { sanitizeCategory, sanitizeDate, sanitizeText } from '../lib/sanitize';
-import { startOfWeek, todayISO, toISO } from '../lib/dates';
+import { startOfWeek, todayISO, toISO, weekDates } from '../lib/dates';
 
 const TIME_RE = /^([01]\d|2[0-3]):([0-5]\d)$/;
 
@@ -44,7 +45,23 @@ export async function addTimeEntry({ date, startTime, endTime, description, cate
     createdAt: new Date().toISOString(),
   };
   await db.timeEntries.add(entry);
+  recordCheckin(); // logging time earns today's check-in
   return entry;
+}
+
+export async function updateTimeEntry(id, { date, startTime, endTime, description, category }) {
+  const cleanText = sanitizeText(description, 100);
+  if (!cleanText) throw new Error('What did you spend time on?');
+  const minutes = durationMinutes(startTime, endTime);
+  if (!minutes) throw new Error('Choose a valid time range');
+  await db.timeEntries.update(id, {
+    date: sanitizeDate(date),
+    startTime: String(startTime || '').slice(0, 5),
+    endTime: String(endTime || '').slice(0, 5),
+    minutes,
+    description: cleanText,
+    category: sanitizeCategory(category, ''),
+  });
 }
 
 export async function deleteTimeEntry(id) {
@@ -74,4 +91,13 @@ export function timeByCategory(entries) {
   return [...map.entries()]
     .map(([category, minutes]) => ({ category, minutes }))
     .sort((a, b) => b.minutes - a.minutes);
+}
+
+// Minutes logged per day across the current week (Mon..Sun) for the trend bars.
+export function minutesByDayThisWeek(entries) {
+  const week = weekDates();
+  return week.map((date) => ({
+    date,
+    minutes: (entries || []).filter((e) => e.date === date).reduce((s, e) => s + (e.minutes || 0), 0),
+  }));
 }

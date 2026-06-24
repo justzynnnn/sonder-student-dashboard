@@ -4,6 +4,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import {
   ArrowUpRight,
   CalendarCheck,
+  Check,
   CheckCircle2,
   Clock3,
   Dumbbell,
@@ -11,47 +12,52 @@ import {
   Heart,
   Moon,
   PiggyBank,
+  Repeat,
   Sparkles,
-  Target,
   Wallet,
 } from 'lucide-react';
 import { db } from '../../data/db';
 import { useSettings } from '../../hooks/useSettings';
+import { useFeedback } from '../../components/Feedback';
 import QuoteCard from './QuoteCard';
 import StatCard from '../../components/StatCard';
 import StatPill from '../../components/StatPill';
-import ProgressRing from '../../components/ProgressRing';
 import { formatMoney } from '../../lib/currency';
 import { moneyOverview } from '../../data/money';
-import { todayProgress } from '../../data/tasks';
+import { todayProgress, todayTasks, upcomingTasks, toggleTask } from '../../data/tasks';
 import { workoutsThisWeek, weekConsistency } from '../../data/gym';
-import { overallGoalProgress } from '../../data/goals';
+import { habitsForDay, toggleHabit } from '../../data/habits';
 import { buildRecap, recapHeadline } from '../../lib/recap';
 import { greeting, messageOfTheDay } from '../../lib/encouragement';
-import { todayISO } from '../../lib/dates';
+import { todayISO, humanDate } from '../../lib/dates';
 import { entriesToday, formatDuration, totalMinutes } from '../../data/time';
 
 export default function HomeTab({ streak = 0, tabs = {} }) {
   const navigate = useNavigate();
   const { settings } = useSettings();
+  const { celebrate } = useFeedback();
   const cur = settings.baseCurrency;
 
   const expenses = useLiveQuery(() => db.expenses.toArray(), [], []);
+  const incomes = useLiveQuery(() => db.incomes.toArray(), [], []);
   const accounts = useLiveQuery(() => db.accounts.toArray(), [], []);
   const tasks = useLiveQuery(() => db.tasks.toArray(), [], []);
   const sessions = useLiveQuery(() => db.sessions.toArray(), [], []);
-  const goals = useLiveQuery(() => db.goals.toArray(), [], []);
-  const milestones = useLiveQuery(() => db.milestones.toArray(), [], []);
+  const habits = useLiveQuery(() => db.habits.toArray(), [], []);
+  const habitCheckins = useLiveQuery(() => db.habitCheckins.toArray(), [], []);
   const timeEntries = useLiveQuery(() => db.timeEntries.toArray(), [], []);
 
-  const money = moneyOverview(accounts || [], expenses || []);
+  const money = moneyOverview(accounts || [], expenses || [], incomes || []);
   const taskProgress = todayProgress(tasks || []);
-  const taskRatio = taskProgress.total ? taskProgress.done / taskProgress.total : 1;
+  const dueToday = todayTasks(tasks || []);
+  const nextTasks = [...dueToday, ...upcomingTasks(tasks || [])].slice(0, 4);
   const gymWeek = workoutsThisWeek(sessions || []);
   const gymDays = weekConsistency(sessions || []);
   const didToday = (gymDays.find((d) => d.date === todayISO()) || {}).done;
-  const goalProgress = overallGoalProgress(goals || [], milestones || []);
   const todayTime = totalMinutes(entriesToday(timeEntries || []));
+
+  const todaysHabits = habitsForDay(habits || [], habitCheckins || []);
+  const habitsDone = todaysHabits.filter((h) => h.done).length;
 
   const recap = useMemo(
     () => buildRecap({ expenses: expenses || [], tasks: tasks || [], sessions: sessions || [], timeEntries: timeEntries || [] }),
@@ -59,10 +65,11 @@ export default function HomeTab({ streak = 0, tabs = {} }) {
   );
 
   const motd = messageOfTheDay({ streak, tasksToday: taskProgress, money });
-  const activeGoal = (goals || []).find((goal) => !goal.completedAt) || (goals || [])[0];
-  const taskState = taskProgress.total
-    ? `${Math.round(taskRatio * 100)}%`
-    : 'Clear';
+
+  const onToggleTask = async (id) => {
+    const done = await toggleTask(id);
+    if (done) celebrate('Nice — one done');
+  };
 
   return (
     <div className="animate-fade-up space-y-4">
@@ -88,32 +95,24 @@ export default function HomeTab({ streak = 0, tabs = {} }) {
         </div>
       </section>
 
+      {/* Today's habits — the daily engine (replaces the goals nudge) */}
+      {tabs.goals ? (
+        <HabitsToday
+          habits={todaysHabits}
+          done={habitsDone}
+          onToggle={(id) => toggleHabit(id)}
+          onManage={() => navigate('/goals')}
+        />
+      ) : null}
+
       {tabs.tasks ? (
-        <button
-          onClick={() => navigate('/tasks')}
-          className="soft-card group w-full overflow-hidden p-4 text-left transition duration-300 hover:-translate-y-0.5 active:scale-[0.985]"
-        >
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <p className="section-title">Tasks</p>
-              <p className="mt-1 font-display text-2xl font-extrabold tracking-tight text-ink">
-                {taskProgress.total ? `${taskProgress.done}/${taskProgress.total}` : 'All clear'}
-              </p>
-              <p className="mt-2 text-xs font-medium leading-relaxed text-muted">
-                {taskProgress.total ? 'Just the next gentle step.' : 'No due tasks are waiting.'}
-              </p>
-            </div>
-            <ProgressRing value={taskRatio} size={76} stroke={7} color="rgb(var(--tasks))">
-              <span className="text-xs font-extrabold text-ink">{taskState}</span>
-            </ProgressRing>
-          </div>
-          <div className="mt-4 h-2 overflow-hidden rounded-full bg-surface-2">
-            <div
-              className="h-full rounded-full bg-tasks transition-all duration-700"
-              style={{ width: `${Math.max(8, taskRatio * 100)}%` }}
-            />
-          </div>
-        </button>
+        <TasksUpNext
+          tasks={nextTasks}
+          dueCount={dueToday.length}
+          allDone={taskProgress.total > 0 && taskProgress.done === taskProgress.total}
+          onToggle={onToggleTask}
+          onOpen={() => navigate('/tasks')}
+        />
       ) : null}
 
       <section className="grid grid-cols-2 gap-3">
@@ -154,45 +153,97 @@ export default function HomeTab({ streak = 0, tabs = {} }) {
         ) : null}
       </section>
 
-      {tabs.goals ? (
-        <button
-          onClick={() => navigate('/goals')}
-          className="soft-card group w-full p-4 text-left transition duration-300 hover:-translate-y-0.5 active:scale-[0.985]"
-        >
-          <div className="flex items-start justify-between gap-4">
-            <div className="min-w-0">
-              <p className="section-title">Goals</p>
-              <p className="mt-1 font-display text-xl font-extrabold tracking-tight text-ink">
-                {activeGoal ? activeGoal.title : 'Choose a north star'}
-              </p>
-              <p className="mt-2 text-xs font-medium leading-relaxed text-muted">
-                {activeGoal ? 'Progress without the pressure.' : 'A goal can be soft and still matter.'}
-              </p>
-            </div>
-            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-goals/15 text-goals">
-              <Target size={18} strokeWidth={2.4} />
-            </span>
-          </div>
-          <div className="mt-4 flex items-center gap-3">
-            <div className="h-2 flex-1 overflow-hidden rounded-full bg-surface-2">
-              <div
-                className="h-full rounded-full bg-goals transition-all duration-700"
-                style={{ width: `${Math.max(8, goalProgress * 100)}%` }}
-              />
-            </div>
-            <span className="text-xs font-extrabold text-goals">{Math.round(goalProgress * 100)}%</span>
-          </div>
-        </button>
-      ) : null}
-
       <GentleRecap
         tabs={tabs}
         recap={recap}
         headline={recapHeadline(recap)}
-        goalProgress={goalProgress}
+        habits={{ done: habitsDone, total: todaysHabits.length }}
         currency={cur}
       />
     </div>
+  );
+}
+
+function HabitsToday({ habits, done, onToggle, onManage }) {
+  if (!habits.length) {
+    return (
+      <button onClick={onManage} className="soft-card flex w-full items-center gap-3 p-4 text-left transition hover:-translate-y-0.5 active:scale-[0.985]">
+        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-goals/15 text-goals"><Repeat size={18} strokeWidth={2.4} /></span>
+        <div className="min-w-0">
+          <p className="section-title">Habits</p>
+          <p className="mt-0.5 text-sm font-semibold text-ink">Add a habit to a goal to start showing up daily.</p>
+        </div>
+      </button>
+    );
+  }
+
+  return (
+    <section className="soft-card p-4">
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <p className="section-title">Today’s habits</p>
+        <StatPill icon={Repeat} label={`${done}/${habits.length}`} accent="rgb(var(--goals))" tone="soft" />
+      </div>
+      <ul className="space-y-2">
+        {habits.map((h) => (
+          <li key={h.id} className="flex items-center gap-3">
+            <button
+              onClick={() => onToggle(h.id)}
+              aria-label={h.done ? `Mark ${h.title} not done` : `Mark ${h.title} done`}
+              className="grid h-7 w-7 shrink-0 place-items-center rounded-full border-2 transition"
+              style={h.done ? { borderColor: 'rgb(var(--goals))', background: 'rgb(var(--goals))', color: 'white' } : { borderColor: 'rgb(var(--line))' }}
+            >
+              {h.done ? <Check size={14} strokeWidth={3} /> : null}
+            </button>
+            <span className={`min-w-0 flex-1 truncate text-sm font-semibold ${h.done ? 'text-muted line-through' : 'text-ink'}`}>{h.title}</span>
+          </li>
+        ))}
+      </ul>
+      <button onClick={onManage} className="mt-3 flex w-full items-center justify-center gap-2 rounded-2xl py-2 text-xs font-bold text-muted transition hover:text-ink active:scale-[0.99]">
+        Manage in Goals <ArrowUpRight size={14} />
+      </button>
+    </section>
+  );
+}
+
+function TasksUpNext({ tasks, dueCount, allDone, onToggle, onOpen }) {
+  const today = todayISO();
+  return (
+    <section className="soft-card p-4">
+      <button onClick={onOpen} className="mb-1 flex w-full items-center justify-between gap-3 text-left">
+        <p className="section-title">Tasks</p>
+        <StatPill icon={CheckCircle2} label={dueCount ? `${dueCount} due` : 'All clear'} accent="rgb(var(--tasks))" tone="soft" />
+      </button>
+
+      {tasks.length === 0 ? (
+        <p className="py-2 text-sm font-semibold text-ink">
+          {allDone ? 'Everything for today is done. Enjoy it.' : 'Nothing due. Add a task or rest easy.'}
+        </p>
+      ) : (
+        <ul className="space-y-2">
+          {tasks.map((t) => {
+            const overdue = t.dueDate && t.dueDate < today;
+            const dueLabel = t.dueDate ? humanDate(t.dueDate) : 'Anytime';
+            return (
+              <li key={t.id} className="flex items-center gap-3">
+                <button
+                  onClick={() => onToggle(t.id)}
+                  aria-label={`Mark ${t.title} done`}
+                  className="grid h-6 w-6 shrink-0 place-items-center rounded-full border-2 border-line transition hover:border-tasks"
+                />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-semibold text-ink">{t.title}</p>
+                  <p className={`text-xs font-medium ${overdue ? 'text-rose-500' : 'text-muted'}`}>{overdue ? `Overdue · ${dueLabel}` : dueLabel}</p>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+
+      <button onClick={onOpen} className="mt-3 flex w-full items-center justify-center gap-2 rounded-2xl py-2 text-xs font-bold text-muted transition hover:text-ink active:scale-[0.99]">
+        Open tasks <ArrowUpRight size={14} />
+      </button>
+    </section>
   );
 }
 
@@ -209,13 +260,13 @@ function WeekDots({ days }) {
   );
 }
 
-function GentleRecap({ tabs, recap, headline, goalProgress, currency }) {
+function GentleRecap({ tabs, recap, headline, habits, currency }) {
   const stats = [];
   if (tabs.tasks) stats.push({ key: 'tasks', icon: CheckCircle2, label: 'Done', value: recap.tasksDone, accent: 'rgb(var(--tasks))' });
   if (tabs.money) stats.push({ key: 'spent', icon: Wallet, label: 'Spent', value: formatMoney(recap.spent, currency, { compact: true }), accent: 'rgb(var(--money))' });
   if (tabs.time) stats.push({ key: 'time', icon: Clock3, label: 'Aware', value: formatDuration(recap.timeMinutes), accent: 'rgb(var(--time))' });
   if (tabs.gym) stats.push({ key: 'gym', icon: CalendarCheck, label: 'Moved', value: recap.workouts, accent: 'rgb(var(--gym))' });
-  if (tabs.goals) stats.push({ key: 'goals', icon: Target, label: 'Growing', value: `${Math.round(goalProgress * 100)}%`, accent: 'rgb(var(--goals))' });
+  if (tabs.goals && habits.total) stats.push({ key: 'habits', icon: Repeat, label: 'Habits', value: `${habits.done}/${habits.total}`, accent: 'rgb(var(--goals))' });
   if (!stats.length) return null;
 
   return (
@@ -237,14 +288,6 @@ function GentleRecap({ tabs, recap, headline, goalProgress, currency }) {
           </div>
         ))}
       </div>
-      <button
-        type="button"
-        className="flex w-full items-center justify-center gap-2 rounded-2xl py-2.5 text-xs font-bold text-muted transition hover:text-ink active:scale-[0.99]"
-      >
-        <Sparkles size={14} />
-        Keep going gently
-        <ArrowUpRight size={14} />
-      </button>
     </section>
   );
 }

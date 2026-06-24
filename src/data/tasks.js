@@ -1,7 +1,8 @@
 import { db } from './db';
 import { generateId } from '../lib/ids';
+import { recordCheckin } from './checkins';
 import { sanitizeText, sanitizeMultiline, sanitizeEnum, sanitizeOptionalDate, sanitizeCategory } from '../lib/sanitize';
-import { todayISO } from '../lib/dates';
+import { todayISO, startOfWeek, toISO } from '../lib/dates';
 
 export const PRIORITIES = ['low', 'med', 'high'];
 
@@ -31,6 +32,7 @@ export async function toggleTask(id) {
     status: done ? 'done' : 'todo',
     completedAt: done ? new Date().toISOString() : null,
   });
+  if (done) recordCheckin(); // finishing a task earns today's check-in
   return done;
 }
 
@@ -77,4 +79,30 @@ export function todayProgress(tasks) {
   const due = (tasks || []).filter((t) => !t.dueDate || t.dueDate <= today);
   const done = due.filter((t) => t.status === 'done').length;
   return { done, total: due.length };
+}
+
+// Tasks completed per ISO week for the last `weeks` weeks, oldest first.
+export function completedPerWeek(tasks, weeks = 8) {
+  const start = startOfWeek();
+  const buckets = [];
+  for (let i = weeks - 1; i >= 0; i -= 1) {
+    const ws = new Date(start);
+    ws.setDate(start.getDate() - i * 7);
+    const we = new Date(ws);
+    we.setDate(ws.getDate() + 7);
+    const from = toISO(ws);
+    const to = toISO(we);
+    const count = (tasks || []).filter((t) => {
+      const d = (t.completedAt || '').slice(0, 10);
+      return t.status === 'done' && d >= from && d < to;
+    }).length;
+    buckets.push({ weekStart: from, count });
+  }
+  return buckets;
+}
+
+export function searchTasks(tasks, query) {
+  const q = (query || '').trim().toLowerCase();
+  if (!q) return tasks || [];
+  return (tasks || []).filter((t) => (t.title || '').toLowerCase().includes(q) || (t.category || '').toLowerCase().includes(q));
 }
