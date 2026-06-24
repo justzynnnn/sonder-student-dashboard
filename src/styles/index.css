@@ -3,67 +3,89 @@
 @tailwind utilities;
 
 /* ============================================================
-   Design tokens — primitive → semantic. Colours are space-
-   separated RGB channels so Tailwind's `rgb(var(--x) / a)` and
-   opacity modifiers work. Light theme on :root, dark on .dark.
+   Design tokens - primitive to semantic. Colors are space-
+   separated RGB channels so Tailwind opacity modifiers work.
    ============================================================ */
 :root {
-  --brand: 99 102 241;     /* indigo-500  */
-  --brand-2: 168 85 247;   /* violet-500  */
-  --money: 16 185 129;     /* emerald-500 */
-  --tasks: 14 165 233;     /* sky-500     */
-  --gym: 249 115 22;       /* orange-500  */
-  --goals: 217 70 239;     /* fuchsia-500 */
+  --brand: 111 111 214;
+  --brand-2: 188 112 164;
+  --money: 20 160 118;
+  --tasks: 38 145 190;
+  --gym: 225 129 76;
+  --goals: 181 100 202;
 
   --surface: 255 255 255;
-  --surface-2: 248 250 252; /* slate-50  */
-  --ink: 15 23 42;          /* slate-900 */
-  --muted: 100 116 139;     /* slate-500 */
-  --line: 226 232 240;      /* slate-200 */
+  --surface-2: 247 248 246;
+  --ink: 22 25 27;
+  --muted: 104 111 116;
+  --line: 225 228 224;
 
-  --app-bg: 245 247 251;
+  --app-bg: 246 247 244;
 }
 
 .dark {
-  --brand: 129 140 248;    /* indigo-400 */
-  --brand-2: 192 132 252;  /* violet-400 */
-  --money: 52 211 153;
-  --tasks: 56 189 248;
-  --gym: 251 146 60;
-  --goals: 232 121 249;
+  --brand: 154 150 232;
+  --brand-2: 214 137 178;
+  --money: 87 211 167;
+  --tasks: 107 194 225;
+  --gym: 242 166 103;
+  --goals: 218 150 229;
 
-  --surface: 20 24 38;
-  --surface-2: 28 33 51;
-  --ink: 241 245 249;
-  --muted: 148 163 184;
-  --line: 51 60 84;
+  --surface: 25 27 29;
+  --surface-2: 34 37 38;
+  --ink: 242 241 235;
+  --muted: 166 170 165;
+  --line: 61 65 63;
 
-  --app-bg: 11 16 32;
+  --app-bg: 14 16 17;
 }
 
 * {
   -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 
 html,
 body,
 #root {
   height: 100%;
+  min-height: 100%;
 }
 
 html {
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
+  background: rgb(var(--app-bg));
 }
 
 body {
   margin: 0;
   font-family: theme('fontFamily.sans');
   color: rgb(var(--ink));
-  background: rgb(var(--app-bg));
+  background:
+    linear-gradient(180deg, rgb(var(--surface-2) / 0.46), transparent 18rem),
+    rgb(var(--app-bg));
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
   overscroll-behavior-y: none;
+  overflow-x: hidden;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+input,
+textarea,
+select,
+button {
+  font: inherit;
+}
+
+input,
+textarea,
+select {
+  user-select: text;
+  -webkit-user-select: text;
+  font-size: 16px;
 }
 
 input[type='date'].input {
@@ -100,15 +122,16 @@ input[type='date'].input::-webkit-calendar-picker-indicator {
 }
 
 .bottom-sheet-panel {
-  max-height: min(88vh, calc(100vh - env(safe-area-inset-top) - 0.75rem));
+  max-height: min(90vh, calc(100vh - env(safe-area-inset-top) - 0.75rem));
   overflow-y: auto;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
+  scrollbar-gutter: stable;
 }
 
 @supports (height: 100dvh) {
   .bottom-sheet-panel {
-    max-height: min(88dvh, calc(100dvh - env(safe-area-inset-top) - 0.75rem));
+    max-height: min(90dvh, calc(100dvh - env(safe-area-inset-top) - 0.75rem));
   }
 }
 
@@ -117,12 +140,26 @@ input[type='date'].input::-webkit-calendar-picker-indicator {
   .card {
     @apply rounded-3xl border border-line bg-surface shadow-card;
   }
+
+  .soft-card {
+    @apply rounded-3xl border border-line/80 bg-surface/95 shadow-card backdrop-blur;
+  }
+
+  .quote-card {
+    @apply rounded-3xl border border-brand/20 bg-surface shadow-card;
+    background:
+      linear-gradient(135deg, rgb(var(--brand) / 0.14), rgb(var(--surface) / 0.96) 46%),
+      rgb(var(--surface));
+  }
+
   .card-pad {
     @apply card p-4;
   }
+
   .section-title {
     @apply text-[11px] font-semibold uppercase tracking-wider text-muted;
   }
+
   .stat-num {
     @apply font-display text-2xl font-extrabold tracking-tight text-ink;
   }
@@ -130,22 +167,42 @@ input[type='date'].input::-webkit-calendar-picker-indicator {
   .btn {
     @apply inline-flex items-center justify-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-semibold transition active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50;
   }
+
   .btn-primary {
     @apply btn bg-gradient-to-br from-brand to-brand-2 text-white shadow-glow hover:brightness-110;
   }
+
   .btn-ghost {
     @apply btn border border-line bg-surface text-ink hover:bg-surface-2;
   }
+
   .btn-soft {
     @apply btn bg-brand/10 text-brand hover:bg-brand/15;
   }
+
   .chip {
     @apply inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold;
   }
 
+  .stat-pill {
+    @apply inline-flex max-w-full items-center gap-1.5 rounded-full border border-line/70 bg-surface-2 px-2.5 py-1 text-[11px] font-bold text-muted;
+    color: color-mix(in srgb, var(--pill-accent, rgb(var(--brand))) 78%, rgb(var(--muted)));
+  }
+
+  .stat-pill strong {
+    @apply text-ink;
+  }
+
+  .stat-pill-soft {
+    border-color: color-mix(in srgb, var(--pill-accent, rgb(var(--brand))) 26%, rgb(var(--line)));
+    background: color-mix(in srgb, var(--pill-accent, rgb(var(--brand))) 12%, rgb(var(--surface)));
+  }
+
   .input {
     @apply w-full min-w-0 rounded-2xl border border-line bg-surface-2 px-3.5 py-3 text-base text-ink outline-none transition placeholder:text-muted/70 focus:border-brand focus:ring-2 focus:ring-brand/30;
+    min-height: 48px;
   }
+
   .label {
     @apply mb-1.5 block text-xs font-semibold text-muted;
   }
@@ -164,6 +221,7 @@ input[type='date'].input::-webkit-calendar-picker-indicator {
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
+
 .no-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;

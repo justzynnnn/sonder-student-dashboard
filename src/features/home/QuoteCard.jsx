@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { Quote, Pin, PinOff, Trash2, Plus } from 'lucide-react';
+import { Quote, Pin, PinOff, Trash2, Plus, Sparkles } from 'lucide-react';
 import { db } from '../../data/db';
 import { pickDailyQuote, addQuote, deleteQuote, togglePin } from '../../data/quotes';
 import BottomSheet from '../../components/BottomSheet';
+import StatPill from '../../components/StatPill';
 import { useFeedback } from '../../components/Feedback';
 
 export default function QuoteCard() {
@@ -15,20 +16,27 @@ export default function QuoteCard() {
     <>
       <button
         onClick={() => setOpen(true)}
-        className="card relative w-full overflow-hidden p-5 text-left active:scale-[0.99]"
+        className="quote-card group relative w-full overflow-hidden p-5 text-left transition duration-300 hover:-translate-y-0.5 active:scale-[0.99]"
       >
-        <div className="pointer-events-none absolute -right-6 -top-6 h-28 w-28 rounded-full bg-brand/10 blur-2xl" />
-        <Quote size={22} className="mb-2 text-brand" />
-        <p className="font-display text-lg font-bold leading-snug text-ink">
+        <div className="flex items-center justify-between gap-3">
+          <span className="grid h-10 w-10 place-items-center rounded-2xl bg-brand/15 text-brand">
+            <Quote size={19} strokeWidth={2.4} />
+          </span>
+          <StatPill
+            icon={Sparkles}
+            label={daily?.pinned ? 'Pinned' : 'Daily'}
+            accent="rgb(var(--brand))"
+            tone="soft"
+          />
+        </div>
+        <p className="mt-5 font-display text-[1.35rem] font-extrabold leading-tight text-ink">
           {daily ? daily.text : 'Add your first quote to start each day inspired.'}
         </p>
-        {daily?.author ? <p className="mt-2 text-sm text-muted">— {daily.author}</p> : null}
-        <p className="mt-3 text-xs font-semibold text-brand">
-          {daily?.pinned ? 'Pinned' : 'Tap to manage your quotes'}
-        </p>
+        {daily?.author ? <p className="mt-3 text-sm font-semibold text-muted">- {daily.author}</p> : null}
+        <p className="mt-5 text-xs font-bold text-brand/90">Tap to tend your quote library</p>
       </button>
 
-      <BottomSheet open={open} onClose={() => setOpen(false)} title="Your quote library">
+      <BottomSheet open={open} onClose={() => setOpen(false)} title="Quote library">
         <QuoteLibrary quotes={quotes} />
       </BottomSheet>
     </>
@@ -59,31 +67,51 @@ function QuoteLibrary({ quotes }) {
   return (
     <div className="pb-4">
       <form onSubmit={add} className="space-y-3">
-        <input value={text} onChange={(e) => setText(e.target.value)} placeholder="Write a quote or saying…" className="input" maxLength={200} />
+        <input
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          placeholder="Write a quote or saying..."
+          className="input"
+          maxLength={200}
+          enterKeyHint="next"
+        />
         <div className="flex gap-2">
-          <input value={author} onChange={(e) => setAuthor(e.target.value)} placeholder="Author (optional)" className="input" maxLength={40} />
-          <button type="submit" disabled={busy} className="btn-primary shrink-0"><Plus size={18} /> Add</button>
+          <input
+            value={author}
+            onChange={(e) => setAuthor(e.target.value)}
+            placeholder="Author (optional)"
+            className="input"
+            maxLength={40}
+            enterKeyHint="done"
+          />
+          <button type="submit" disabled={busy} className="btn-primary shrink-0">
+            <Plus size={18} /> Add
+          </button>
         </div>
       </form>
 
-      <p className="section-title mt-5 mb-2">Pin one to stop daily rotation</p>
+      <p className="section-title mb-2 mt-5">Pinned calm</p>
       <ul className="space-y-2">
         {(quotes || []).map((q) => (
-          <li key={q.id} className="card flex items-start gap-3 p-3">
+          <li key={q.id} className="soft-card flex items-start gap-3 p-3">
             <div className="flex-1">
               <p className="text-sm font-medium text-ink">{q.text}</p>
-              {q.author ? <p className="mt-0.5 text-xs text-muted">— {q.author}</p> : null}
+              {q.author ? <p className="mt-0.5 text-xs text-muted">- {q.author}</p> : null}
             </div>
-            <button onClick={() => togglePin(q.id)} aria-label="Pin" className={`grid h-8 w-8 place-items-center rounded-lg ${q.pinned ? 'bg-brand/15 text-brand' : 'text-muted hover:bg-surface-2'}`}>
+            <button
+              onClick={() => togglePin(q.id)}
+              aria-label="Pin"
+              className={`grid h-8 w-8 place-items-center rounded-xl ${q.pinned ? 'bg-brand/15 text-brand' : 'text-muted hover:bg-surface-2'}`}
+            >
               {q.pinned ? <Pin size={16} /> : <PinOff size={16} />}
             </button>
-            <button onClick={() => deleteQuote(q.id)} aria-label="Delete" className="grid h-8 w-8 place-items-center rounded-lg text-muted hover:text-rose-500">
+            <button onClick={() => deleteQuote(q.id)} aria-label="Delete" className="grid h-8 w-8 place-items-center rounded-xl text-muted hover:text-rose-500">
               <Trash2 size={16} />
             </button>
           </li>
         ))}
         {(!quotes || quotes.length === 0) && (
-          <p className="py-6 text-center text-sm text-muted">No quotes yet — add one above.</p>
+          <p className="py-6 text-center text-sm text-muted">No quotes yet. Add one above.</p>
         )}
       </ul>
     </div>

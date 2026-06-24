@@ -1,19 +1,38 @@
 import { ChevronRight } from 'lucide-react';
 
 // Compact KPI card with an accent icon and optional tap-through chevron.
-export default function StatCard({ icon: Icon, accent = 'rgb(var(--brand))', label, value, sub, onClick }) {
+export default function StatCard({
+  icon: Icon,
+  accent = 'rgb(var(--brand))',
+  label,
+  value,
+  sub,
+  meta,
+  onClick,
+  className = '',
+  children,
+}) {
   const Tag = onClick ? 'button' : 'div';
   return (
-    <Tag onClick={onClick} className={`card p-4 text-left transition ${onClick ? 'active:scale-[0.98]' : ''}`}>
-      <div className="flex items-center justify-between">
-        <span className="grid h-9 w-9 place-items-center rounded-2xl" style={{ background: `color-mix(in srgb, ${accent} 16%, transparent)`, color: accent }}>
+    <Tag
+      onClick={onClick}
+      className={`soft-card group min-h-[9.25rem] p-4 text-left transition duration-300 ${onClick ? 'hover:-translate-y-0.5 active:scale-[0.985]' : ''} ${className}`}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl" style={{ background: `color-mix(in srgb, ${accent} 18%, transparent)`, color: accent }}>
           {Icon && <Icon size={18} strokeWidth={2.4} />}
         </span>
-        {onClick && <ChevronRight size={18} className="text-muted" />}
+        {onClick && (
+          <span className="grid h-8 w-8 place-items-center rounded-full bg-surface-2/80 text-muted transition group-hover:text-ink">
+            <ChevronRight size={16} />
+          </span>
+        )}
       </div>
-      <p className="mt-3 text-[15px] font-extrabold tracking-tight text-ink">{value}</p>
-      <p className="section-title mt-0.5">{label}</p>
-      {sub && <p className="mt-0.5 truncate text-xs text-muted">{sub}</p>}
+      <p className="section-title mt-4">{label}</p>
+      <p className="mt-1 font-display text-2xl font-extrabold leading-none tracking-tight text-ink">{value}</p>
+      {sub && <p className="mt-2 line-clamp-2 text-xs font-medium leading-relaxed text-muted">{sub}</p>}
+      {meta ? <div className="mt-3">{meta}</div> : null}
+      {children}
     </Tag>
   );
 }
