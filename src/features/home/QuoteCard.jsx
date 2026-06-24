@@ -84,8 +84,9 @@ function QuoteLibrary({ quotes }) {
             maxLength={40}
             enterKeyHint="done"
           />
-          <button type="submit" disabled={busy} className="btn-primary shrink-0">
-            <Plus size={18} /> Add
+          <button type="submit" disabled={busy} className="btn-add-primary shrink-0">
+            <span className="add-symbol"><Plus size={16} /></span>
+            <span>Add</span>
           </button>
         </div>
       </form>

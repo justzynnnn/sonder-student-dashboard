@@ -47,7 +47,7 @@ export default function GoalsTab() {
           icon={Target}
           title="No goals yet"
           hint="Dream a little — what are you building toward?"
-          action={<button onClick={() => setAddOpen(true)} className="btn-primary"><Plus size={18} /> Add a goal</button>}
+          action={<button onClick={() => setAddOpen(true)} className="btn-add-primary"><span className="add-symbol"><Plus size={16} /></span> Add a goal</button>}
         />
       ) : (
         <div className="space-y-3">
@@ -80,7 +80,10 @@ export default function GoalsTab() {
         </div>
       )}
 
-      <button onClick={() => setAddOpen(true)} className="btn-primary w-full"><Plus size={18} /> Add a goal</button>
+      <button onClick={() => setAddOpen(true)} className="btn-add-primary w-full">
+        <span className="add-symbol"><Plus size={16} /></span>
+        Add a goal
+      </button>
 
       <BottomSheet open={addOpen} onClose={() => setAddOpen(false)} title="New goal">
         <AddGoalForm onDone={() => setAddOpen(false)} />
@@ -159,7 +162,10 @@ function AddGoalForm({ onDone }) {
         <input type="date" value={deadline} onChange={(e) => setDeadline(e.target.value)} className="input" />
       </div>
       <p className="text-xs text-muted">Leave target blank to track this goal with milestones instead.</p>
-      <button disabled={busy} className="btn-primary w-full">Create goal</button>
+      <button disabled={busy} className="btn-add-primary w-full">
+        <span className="add-symbol"><Plus size={16} /></span>
+        Create goal
+      </button>
     </form>
   );
 }
@@ -210,8 +216,8 @@ function GoalDetail({ goal, milestones, onClose }) {
       <div>
         <p className="section-title mb-2 px-1">Milestones</p>
         <form onSubmit={addMs} className="mb-2 flex gap-2">
-          <input value={ms} onChange={(e) => setMs(e.target.value)} placeholder="Add a small win…" className="input" maxLength={80} />
-          <button className="btn-soft shrink-0"><Plus size={18} /></button>
+          <input value={ms} onChange={(e) => setMs(e.target.value)} placeholder="Add a small win..." className="input" maxLength={80} />
+          <button className="btn-icon-add" aria-label="Add milestone"><Plus size={18} /></button>
         </form>
         <ul className="space-y-1.5">
           {milestones.map((m) => (

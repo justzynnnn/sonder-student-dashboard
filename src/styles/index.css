@@ -165,7 +165,7 @@ input[type='date'].input::-webkit-calendar-picker-indicator {
   }
 
   .btn {
-    @apply inline-flex items-center justify-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-semibold transition active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50;
+    @apply inline-flex min-h-11 min-w-0 items-center justify-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/35 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50;
   }
 
   .btn-primary {
@@ -178,6 +178,30 @@ input[type='date'].input::-webkit-calendar-picker-indicator {
 
   .btn-soft {
     @apply btn bg-brand/10 text-brand hover:bg-brand/15;
+  }
+
+  .btn-add {
+    @apply btn rounded-[1.35rem] border border-brand/20 bg-surface text-brand shadow-card hover:border-brand/35 hover:bg-brand/10;
+  }
+
+  .btn-add-primary {
+    @apply btn rounded-[1.35rem] border border-white/10 bg-gradient-to-br from-brand to-brand-2 px-5 text-white shadow-glow hover:brightness-110;
+  }
+
+  .btn-add-soft {
+    @apply btn rounded-[1.15rem] border border-line/70 bg-surface-2 px-3 text-muted hover:border-brand/25 hover:bg-brand/10 hover:text-brand;
+  }
+
+  .btn-icon-add {
+    @apply grid h-12 w-12 shrink-0 place-items-center rounded-[1.15rem] border border-line/70 bg-surface-2 text-muted transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/35 hover:border-brand/25 hover:bg-brand/10 hover:text-brand active:scale-95 disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  .add-symbol {
+    @apply grid h-7 w-7 shrink-0 place-items-center rounded-full bg-white/20 text-current;
+  }
+
+  .add-symbol-soft {
+    @apply grid h-6 w-6 shrink-0 place-items-center rounded-full bg-brand/10 text-brand;
   }
 
   .chip {

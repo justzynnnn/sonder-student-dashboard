@@ -67,7 +67,7 @@ export default function TasksTab() {
           icon={emptyIcon}
           title={view === 'completed' ? 'Nothing completed yet' : view === 'upcoming' ? 'Nothing upcoming' : 'You’re all caught up'}
           hint={view === 'completed' ? 'Finished tasks land here.' : 'Add a task or enjoy the free time.'}
-          action={<button onClick={() => setOpen(true)} className="btn-primary"><Plus size={18} /> Add task</button>}
+          action={<button onClick={() => setOpen(true)} className="btn-add-primary"><span className="add-symbol"><Plus size={16} /></span> Add task</button>}
         />
       ) : (
         <ul className="space-y-2">
@@ -98,7 +98,10 @@ export default function TasksTab() {
         </ul>
       )}
 
-      <button onClick={() => setOpen(true)} className="btn-primary w-full"><Plus size={18} /> Add task</button>
+      <button onClick={() => setOpen(true)} className="btn-add-primary w-full">
+        <span className="add-symbol"><Plus size={16} /></span>
+        Add task
+      </button>
 
       <BottomSheet open={open} onClose={() => setOpen(false)} title="Add task">
         <AddTaskForm onDone={() => setOpen(false)} defaultDueDate={view === 'upcoming' ? '' : ''} />

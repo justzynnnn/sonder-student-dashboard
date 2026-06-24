@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
+import { Plus } from 'lucide-react';
 import { db } from '../../data/db';
 import { addExpense } from '../../data/money';
 import { BUILT_IN_CATEGORIES } from '../../data/categories';
@@ -23,7 +24,7 @@ export default function AddExpenseForm({ onDone }) {
 
   const submit = async (e) => {
     e.preventDefault();
-    if (busy) return; // double-submit guard
+    if (busy) return;
     setBusy(true);
     setError('');
     try {
@@ -49,9 +50,15 @@ export default function AddExpenseForm({ onDone }) {
         <div className="relative">
           <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-lg font-bold text-muted">{sym}</span>
           <input
-            type="number" inputMode="decimal" step="0.01" min="0" autoFocus
-            value={amount} onChange={(e) => setAmount(e.target.value)}
-            placeholder="0.00" className="input pl-9 text-lg font-bold"
+            type="number"
+            inputMode="decimal"
+            step="0.01"
+            min="0"
+            autoFocus
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+            placeholder="0.00"
+            className="input pl-9 text-lg font-bold"
           />
         </div>
       </div>
@@ -59,19 +66,22 @@ export default function AddExpenseForm({ onDone }) {
       <div>
         <label className="label">Category</label>
         <div className="flex flex-wrap gap-2">
-          {BUILT_IN_CATEGORIES.map((c) => {
-            const active = c.name === category;
+          {BUILT_IN_CATEGORIES.map((categoryOption) => {
+            const active = categoryOption.name === category;
             return (
               <button
-                key={c.name} type="button" onClick={() => setCategory(c.name)}
+                key={categoryOption.name}
+                type="button"
+                onClick={() => setCategory(categoryOption.name)}
                 className="chip border transition"
                 style={{
-                  borderColor: active ? c.color : 'rgb(var(--line))',
-                  background: active ? `color-mix(in srgb, ${c.color} 18%, transparent)` : 'rgb(var(--surface-2))',
-                  color: active ? c.color : 'rgb(var(--muted))',
+                  borderColor: active ? categoryOption.color : 'rgb(var(--line))',
+                  background: active ? `color-mix(in srgb, ${categoryOption.color} 18%, transparent)` : 'rgb(var(--surface-2))',
+                  color: active ? categoryOption.color : 'rgb(var(--muted))',
                 }}
               >
-                <span className="h-2.5 w-2.5 rounded-full" style={{ background: c.color }} /> {c.name}
+                <span className="h-2.5 w-2.5 rounded-full" style={{ background: categoryOption.color }} />
+                {categoryOption.name}
               </button>
             );
           })}
@@ -92,15 +102,16 @@ export default function AddExpenseForm({ onDone }) {
           <label className="label">Account</label>
           <select value={accountId} onChange={(e) => setAccountId(e.target.value)} className="input">
             <option value="">None</option>
-            {(accounts || []).map((a) => (
-              <option key={a.id} value={a.id}>{a.name}</option>
+            {(accounts || []).map((account) => (
+              <option key={account.id} value={account.id}>{account.name}</option>
             ))}
           </select>
         </div>
       </div>
 
-      <button type="submit" disabled={busy} className="btn-primary w-full">
-        {busy ? 'Saving…' : 'Add expense'}
+      <button type="submit" disabled={busy} className="btn-add-primary w-full">
+        {!busy && <span className="add-symbol"><Plus size={16} /></span>}
+        {busy ? 'Saving...' : 'Add expense'}
       </button>
     </form>
   );

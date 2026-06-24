@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Plus } from 'lucide-react';
 import { addTask } from '../../data/tasks';
 import { useFeedback } from '../../components/Feedback';
 
@@ -23,7 +24,7 @@ export default function AddTaskForm({ onDone, defaultDueDate = '' }) {
 
   const submit = async (e) => {
     e.preventDefault();
-    if (busy) return; // double-submit guard
+    if (busy) return;
     setBusy(true);
     setError('');
     try {
@@ -49,19 +50,21 @@ export default function AddTaskForm({ onDone, defaultDueDate = '' }) {
       <div>
         <label className="label">Priority</label>
         <div className="flex gap-2">
-          {PRIORITY_OPTS.map((p) => {
-            const active = p.id === priority;
+          {PRIORITY_OPTS.map((priorityOption) => {
+            const active = priorityOption.id === priority;
             return (
               <button
-                key={p.id} type="button" onClick={() => setPriority(p.id)}
+                key={priorityOption.id}
+                type="button"
+                onClick={() => setPriority(priorityOption.id)}
                 className="chip flex-1 justify-center border transition"
                 style={{
-                  borderColor: active ? p.color : 'rgb(var(--line))',
-                  background: active ? `color-mix(in srgb, ${p.color} 18%, transparent)` : 'rgb(var(--surface-2))',
-                  color: active ? p.color : 'rgb(var(--muted))',
+                  borderColor: active ? priorityOption.color : 'rgb(var(--line))',
+                  background: active ? `color-mix(in srgb, ${priorityOption.color} 18%, transparent)` : 'rgb(var(--surface-2))',
+                  color: active ? priorityOption.color : 'rgb(var(--muted))',
                 }}
               >
-                {p.label}
+                {priorityOption.label}
               </button>
             );
           })}
@@ -72,7 +75,7 @@ export default function AddTaskForm({ onDone, defaultDueDate = '' }) {
         <div>
           <label className="label">Type</label>
           <select value={category} onChange={(e) => setCategory(e.target.value)} className="input">
-            {CATEGORY_OPTS.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
+            {CATEGORY_OPTS.map((categoryOption) => <option key={categoryOption.id} value={categoryOption.id}>{categoryOption.label}</option>)}
           </select>
         </div>
         <div>
@@ -81,8 +84,9 @@ export default function AddTaskForm({ onDone, defaultDueDate = '' }) {
         </div>
       </div>
 
-      <button type="submit" disabled={busy} className="btn-primary w-full">
-        {busy ? 'Saving…' : 'Add task'}
+      <button type="submit" disabled={busy} className="btn-add-primary w-full">
+        {!busy && <span className="add-symbol"><Plus size={16} /></span>}
+        {busy ? 'Saving...' : 'Add task'}
       </button>
     </form>
   );

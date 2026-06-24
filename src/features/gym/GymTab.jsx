@@ -56,7 +56,10 @@ export default function GymTab() {
       {/* Start */}
       <div className="grid grid-cols-2 gap-3">
         <button onClick={startQuick} className="btn-primary py-3.5"><Play size={18} /> Quick start</button>
-        <button onClick={() => setPlanSheet(true)} className="btn-ghost py-3.5"><Plus size={18} /> New plan</button>
+        <button onClick={() => setPlanSheet(true)} className="btn-add py-3.5">
+          <span className="add-symbol-soft"><Plus size={14} /></span>
+          New plan
+        </button>
       </div>
 
       {/* Plans */}
@@ -176,9 +179,15 @@ function CreatePlanForm({ onDone }) {
             </div>
           </div>
         ))}
-        <button type="button" onClick={addRow} className="btn-ghost w-full text-sm"><Plus size={16} /> Add exercise</button>
+        <button type="button" onClick={addRow} className="btn-add w-full text-sm">
+          <span className="add-symbol-soft"><Plus size={14} /></span>
+          Add exercise
+        </button>
       </div>
-      <button disabled={busy} className="btn-primary w-full">Save plan</button>
+      <button disabled={busy} className="btn-add-primary w-full">
+        <span className="add-symbol"><Plus size={16} /></span>
+        Save plan
+      </button>
     </form>
   );
 }

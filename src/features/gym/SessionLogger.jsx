@@ -94,7 +94,10 @@ export default function SessionLogger({ initial, onDone }) {
               </div>
             ))}
           </div>
-          <button onClick={() => addSet(ei)} className="btn-ghost mt-2 h-9 w-full text-xs"><Plus size={14} /> Add set</button>
+          <button onClick={() => addSet(ei)} className="btn-add-soft mt-2 w-full text-xs">
+            <span className="add-symbol-soft"><Plus size={13} /></span>
+            Add set
+          </button>
         </div>
       ))}
 
@@ -114,7 +117,7 @@ export default function SessionLogger({ initial, onDone }) {
           <datalist id="exercise-library">
             {(library || []).map((x) => <option key={x.name} value={x.name} />)}
           </datalist>
-          <button onClick={addExercise} className="btn-soft shrink-0"><Plus size={18} /></button>
+          <button onClick={addExercise} className="btn-icon-add" aria-label="Add exercise"><Plus size={18} /></button>
         </div>
       </div>
 

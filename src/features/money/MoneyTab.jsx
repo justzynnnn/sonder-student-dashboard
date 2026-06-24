@@ -133,7 +133,9 @@ export default function MoneyTab() {
                   </div>
                   <div className="mt-1.5 flex items-center justify-between text-xs">
                     <span className="text-muted">{formatMoney(s.saved, cur)} / {formatMoney(s.target, cur)}</span>
-                    <button onClick={() => addToSaving(s.id, 10)} className="font-semibold text-money">+ Add {currencySymbol(cur)}10</button>
+                    <button onClick={() => addToSaving(s.id, 10)} className="inline-flex min-h-8 items-center rounded-xl bg-money/10 px-2.5 text-xs font-bold text-money transition hover:bg-money/15 active:scale-95">
+                      + Add {currencySymbol(cur)}10
+                    </button>
                   </div>
                 </div>
               );
@@ -163,8 +165,9 @@ export default function MoneyTab() {
         )}
       </Section>
 
-      <button onClick={() => setSheet('expense')} className="btn-primary w-full">
-        <Plus size={18} /> Add expense
+      <button onClick={() => setSheet('expense')} className="btn-add-primary w-full">
+        <span className="add-symbol"><Plus size={16} /></span>
+        Add expense
       </button>
 
       {/* Sheets */}
@@ -194,7 +197,12 @@ function Section({ title, action, children }) {
 }
 
 function AddBtn({ onClick }) {
-  return <button onClick={onClick} className="btn-soft h-8 !px-3 !py-1 text-xs"><Plus size={14} /> Add</button>;
+  return (
+    <button onClick={onClick} className="btn-add-soft min-h-9 !px-3 !py-1 text-xs">
+      <span className="add-symbol-soft"><Plus size={13} /></span>
+      Add
+    </button>
+  );
 }
 
 function AffordCheck({ cur, accounts, expenses }) {
@@ -250,7 +258,10 @@ function AddAccountForm({ onDone, cur }) {
         <label className="label">Current balance ({cur})</label>
         <input type="number" inputMode="decimal" value={balance} onChange={(e) => setBalance(e.target.value)} placeholder="0.00" className="input" />
       </div>
-      <button disabled={busy} className="btn-primary w-full">Add account</button>
+      <button disabled={busy} className="btn-add-primary w-full">
+        <span className="add-symbol"><Plus size={16} /></span>
+        Add account
+      </button>
     </form>
   );
 }
@@ -276,7 +287,10 @@ function AddSavingForm({ onDone, cur }) {
         <div><label className="label">Target ({cur})</label><input type="number" inputMode="decimal" value={target} onChange={(e) => setTarget(e.target.value)} placeholder="0.00" className="input" /></div>
         <div><label className="label">Saved so far</label><input type="number" inputMode="decimal" value={saved} onChange={(e) => setSaved(e.target.value)} placeholder="0.00" className="input" /></div>
       </div>
-      <button disabled={busy} className="btn-primary w-full">Create goal</button>
+      <button disabled={busy} className="btn-add-primary w-full">
+        <span className="add-symbol"><Plus size={16} /></span>
+        Create goal
+      </button>
     </form>
   );
 }

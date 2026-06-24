@@ -51,12 +51,12 @@ export default function QuickAdd({ open, onClose, tabs = {} }) {
                 <button
                   key={m.id}
                   onClick={() => choose(m.id)}
-                  className="soft-card flex flex-col items-center gap-2 p-5 transition hover:-translate-y-0.5 active:scale-95"
+                  className="flex min-h-32 flex-col items-center justify-center gap-2 rounded-[1.35rem] border border-line/75 bg-surface-2/70 p-4 text-center transition hover:-translate-y-0.5 hover:border-brand/25 hover:bg-surface active:scale-95"
                 >
                   <span className="grid h-12 w-12 place-items-center rounded-2xl" style={{ background: `color-mix(in srgb, ${m.accent} 16%, transparent)`, color: m.accent }}>
                     <Icon size={24} strokeWidth={2.4} />
                   </span>
-                  <span className="font-semibold">{m.label}</span>
+                  <span className="truncate font-semibold">{m.label}</span>
                 </button>
               );
             })}
