@@ -122,16 +122,18 @@ input[type='date'].input::-webkit-calendar-picker-indicator {
 }
 
 .bottom-sheet-panel {
-  max-height: min(90vh, calc(100vh - env(safe-area-inset-top) - 0.75rem));
-  overflow-y: auto;
+  max-height: min(92vh, calc(100vh - env(safe-area-inset-top) - 1.5rem));
   overscroll-behavior: contain;
+}
+
+.bottom-sheet-scroll {
   -webkit-overflow-scrolling: touch;
   scrollbar-gutter: stable;
 }
 
 @supports (height: 100dvh) {
   .bottom-sheet-panel {
-    max-height: min(90dvh, calc(100dvh - env(safe-area-inset-top) - 0.75rem));
+    max-height: min(92dvh, calc(100dvh - env(safe-area-inset-top) - 1.5rem));
   }
 }
 
