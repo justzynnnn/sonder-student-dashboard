@@ -18,6 +18,7 @@ import GymTab from '../features/gym/GymTab';
 import GoalsTab from '../features/goals/GoalsTab';
 import SettingsPage from '../features/settings/SettingsPage';
 import AppIcon from '../components/AppIcon';
+import FormEffects from '../components/FormEffects';
 
 function Splash() {
   return (
@@ -46,6 +47,7 @@ export default function App() {
   if (!settings.onboarded) {
     return (
       <FeedbackProvider>
+        <FormEffects />
         <Onboarding onDone={() => {}} />
       </FeedbackProvider>
     );
@@ -55,6 +57,7 @@ export default function App() {
 
   return (
     <FeedbackProvider>
+      <FormEffects />
       <Routes>
         <Route element={<AppLayout streak={streak} tabs={tabs} />}>
           <Route index element={<HomeTab streak={streak} tabs={tabs} />} />
