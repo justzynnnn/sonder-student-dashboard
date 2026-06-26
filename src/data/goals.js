@@ -68,10 +68,21 @@ export async function updateGoalProgress(id, current) {
 }
 
 export async function deleteGoal(id) {
-  await db.transaction('rw', db.goals, db.milestones, async () => {
+  await db.transaction('rw', db.goals, db.milestones, db.habits, db.habitCheckins, async () => {
     await db.goals.delete(id);
     const ms = await db.milestones.where('goalId').equals(id).toArray();
     await Promise.all(ms.map((m) => db.milestones.delete(m.id)));
+    // Cascade: a goal's habits (and their check-ins) go with it, otherwise they
+    // linger as orphans and keep showing up on Home.
+    const habits = await db.habits.where('goalId').equals(id).toArray();
+    for (const h of habits) {
+      // eslint-disable-next-line no-await-in-loop
+      const logs = await db.habitCheckins.where('habitId').equals(h.id).toArray();
+      // eslint-disable-next-line no-await-in-loop
+      await Promise.all(logs.map((l) => db.habitCheckins.delete([l.habitId, l.date])));
+      // eslint-disable-next-line no-await-in-loop
+      await db.habits.delete(h.id);
+    }
   });
 }
 

@@ -5,6 +5,7 @@ import { db } from '../data/db';
 import { useSettings } from '../hooks/useSettings';
 import { seedQuotesIfEmpty } from '../data/quotes';
 import { materializeRecurrences } from '../data/recurrences';
+import { pruneOrphanHabits } from '../data/habits';
 import { requestPersistentStorage } from '../data/admin';
 import { maybeRemind } from '../lib/reminders';
 import { computeStreak } from '../lib/streaks';
@@ -41,6 +42,7 @@ export default function App() {
   useEffect(() => {
     seedQuotesIfEmpty();
     materializeRecurrences();
+    pruneOrphanHabits();
     requestPersistentStorage();
   }, []);
 

@@ -1,7 +1,6 @@
 import { useState } from 'react';
-import { ArrowRight, Check, Sparkles } from 'lucide-react';
+import { ArrowRight, Check } from 'lucide-react';
 import { completeOnboarding, TOGGLEABLE_TABS, DEFAULT_TABS } from '../data/settings';
-import { seedStarterData } from '../data/seed';
 import { CURRENCIES } from '../lib/currency';
 import { useTheme } from '../hooks/useTheme';
 import AppIcon from '../components/AppIcon';
@@ -11,7 +10,6 @@ export default function Onboarding({ onDone }) {
   const [name, setName] = useState('');
   const [baseCurrency, setBaseCurrency] = useState('USD');
   const [tabs, setTabs] = useState({ ...DEFAULT_TABS });
-  const [seed, setSeed] = useState(true);
   const [busy, setBusy] = useState(false);
 
   const toggle = (id) => setTabs((current) => ({ ...current, [id]: !current[id] }));
@@ -21,7 +19,6 @@ export default function Onboarding({ onDone }) {
     setBusy(true);
     try {
       await completeOnboarding({ name, baseCurrency, tabs });
-      if (seed) await seedStarterData(tabs);
       onDone?.();
     } finally {
       setBusy(false);
@@ -84,22 +81,6 @@ export default function Onboarding({ onDone }) {
               })}
             </div>
           </div>
-
-          <button
-            type="button"
-            onClick={() => setSeed((v) => !v)}
-            className={`flex w-full items-center justify-between rounded-2xl border px-3.5 py-3 text-left text-sm font-semibold transition active:scale-[0.99] ${
-              seed ? 'border-brand bg-brand/10 text-brand' : 'border-line bg-surface-2 text-muted'
-            }`}
-          >
-            <span className="flex items-center gap-2">
-              <Sparkles size={16} />
-              Start with a few examples I can edit or delete
-            </span>
-            <span className={`grid h-5 w-5 place-items-center rounded-full border-2 ${seed ? 'border-brand bg-brand text-white' : 'border-line'}`}>
-              {seed && <Check size={12} strokeWidth={3} />}
-            </span>
-          </button>
         </div>
 
         <button onClick={start} disabled={busy} className="btn-primary mt-6 w-full py-3.5 text-base">

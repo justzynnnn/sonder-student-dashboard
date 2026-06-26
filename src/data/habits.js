@@ -107,3 +107,20 @@ export function habitStreak(habit, checkins) {
 export function anyHabitDoneToday(checkins) {
   return (checkins || []).some((c) => c.date === todayISO());
 }
+
+// Delete habits whose parent goal no longer exists (and their check-ins). Cleans
+// up orphans left by goals deleted before the cascade fix existed. Runs on start.
+export async function pruneOrphanHabits() {
+  const [habits, goals] = await Promise.all([db.habits.toArray(), db.goals.toArray()]);
+  const goalIds = new Set(goals.map((g) => g.id));
+  const orphans = habits.filter((h) => h.goalId && !goalIds.has(h.goalId));
+  for (const h of orphans) {
+    // eslint-disable-next-line no-await-in-loop
+    const logs = await db.habitCheckins.where('habitId').equals(h.id).toArray();
+    // eslint-disable-next-line no-await-in-loop
+    await Promise.all(logs.map((l) => db.habitCheckins.delete([l.habitId, l.date])));
+    // eslint-disable-next-line no-await-in-loop
+    await db.habits.delete(h.id);
+  }
+  return orphans.length;
+}
