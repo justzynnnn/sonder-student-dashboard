@@ -22,6 +22,7 @@ export const DEFAULT_SETTINGS = {
   tabs: { ...DEFAULT_TABS },
   reminderEnabled: false,
   reminderTime: '19:00',
+  bibleVerse: true,
   onboarded: false,
   createdAt: null,
 };

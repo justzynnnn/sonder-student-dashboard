@@ -1,12 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Download, Upload, Trash2, ShieldCheck, Sun, Moon, Bell } from 'lucide-react';
+import { ArrowLeft, Download, Upload, Trash2, ShieldCheck, Sun, Moon, Bell, BookOpen, FileText } from 'lucide-react';
 import { useSettings } from '../../hooks/useSettings';
 import { useTheme } from '../../hooks/useTheme';
 import { useFeedback } from '../../components/Feedback';
 import { saveSettings, setTabEnabled, TOGGLEABLE_TABS } from '../../data/settings';
 import { CURRENCIES } from '../../lib/currency';
-import { exportBackup, downloadJSON, clearAllData, importBackup } from '../../data/admin';
+import { exportBackup, downloadJSON, clearAllData, importBackup, exportExpensesCsv, EXPORT_PERIODS } from '../../data/admin';
 import { requestNotificationPermission, notificationPermission } from '../../lib/reminders';
 
 export default function SettingsPage() {
@@ -19,6 +19,7 @@ export default function SettingsPage() {
   const [currency, setCurrency] = useState(settings.baseCurrency);
   const [confirming, setConfirming] = useState(false);
   const [restoring, setRestoring] = useState(false);
+  const [csvPeriod, setCsvPeriod] = useState('30');
 
   // useSettings resolves async (own live query), so seed the fields once the
   // stored values arrive — otherwise they'd stay blank on first paint.
@@ -133,6 +134,18 @@ export default function SettingsPage() {
         ) : null}
       </section>
 
+      {/* Bible verse */}
+      <section className="card-pad flex items-center justify-between gap-3">
+        <div className="flex items-start gap-2">
+          <BookOpen size={18} className="mt-0.5 shrink-0 text-brand" />
+          <div>
+            <p className="font-semibold">Daily Bible verse</p>
+            <p className="text-sm text-muted">Show an encouraging verse on your home screen.</p>
+          </div>
+        </div>
+        <Switch checked={!!settings.bibleVerse} onChange={(v) => saveSettings({ bibleVerse: v })} />
+      </section>
+
       {/* Appearance */}
       <section className="card-pad flex items-center justify-between">
         <div>
@@ -151,6 +164,18 @@ export default function SettingsPage() {
           </p>
         </div>
         <button onClick={doExport} className="btn-ghost w-full"><Download size={18} /> Export my data (JSON)</button>
+
+        <div className="flex gap-2">
+          <select value={csvPeriod} onChange={(e) => setCsvPeriod(e.target.value)} className="input flex-1" aria-label="CSV export period">
+            {EXPORT_PERIODS.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
+          </select>
+          <button
+            onClick={() => exportExpensesCsv(EXPORT_PERIODS.find((p) => p.id === csvPeriod)?.days ?? null)}
+            className="btn-ghost shrink-0"
+          >
+            <FileText size={18} /> Expenses CSV
+          </button>
+        </div>
 
         <input ref={fileRef} type="file" accept="application/json,.json" onChange={onFile} className="hidden" />
         {!restoring ? (

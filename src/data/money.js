@@ -4,7 +4,7 @@ import { recordCheckin } from './checkins';
 import {
   sanitizeText, sanitizeAmount, sanitizeCategory, sanitizeDate, sanitizeEnum,
 } from '../lib/sanitize';
-import { startOfWeek, startOfMonth, toISO, daysLeftInMonth } from '../lib/dates';
+import { startOfWeek, startOfMonth, toISO, daysLeftInMonth, monthKey } from '../lib/dates';
 
 export const ACCOUNT_TYPES = ['cash', 'debit', 'credit'];
 
@@ -59,6 +59,23 @@ export async function updateAccount(id, { name, balance, creditLimit }) {
 
 export async function deleteAccount(id) {
   await db.accounts.delete(id);
+}
+
+// Move money between two accounts (no net expense — balances only). Credit
+// accounts are treated as debt: receiving money pays them down, taking money
+// out is a cash advance.
+export async function transferBetween(fromId, toId, amount) {
+  const amt = sanitizeAmount(amount);
+  if (amt === null) throw new Error('Enter an amount greater than zero');
+  if (!fromId || !toId || fromId === toId) throw new Error('Pick two different accounts');
+  await db.transaction('rw', db.accounts, async () => {
+    const from = await db.accounts.get(fromId);
+    const to = await db.accounts.get(toId);
+    if (!from || !to) throw new Error('Account not found');
+    await adjustAccount(fromId, from.type === 'credit' ? amt : -amt);
+    await adjustAccount(toId, to.type === 'credit' ? -amt : amt);
+  });
+  recordCheckin();
 }
 
 export async function addExpense({ amount, category, description, date, accountId }, { activity = true } = {}) {
@@ -291,6 +308,24 @@ export function spendingByCategory(expenses, period) {
   return [...map.entries()]
     .map(([category, total]) => ({ category, total: Math.round(total * 100) / 100 }))
     .sort((a, b) => b.total - a.total);
+}
+
+// This-month spend vs last month, plus a pace-based month-end projection —
+// the "Insights" numbers ported from the expense tracker.
+export function monthStats(expenses) {
+  const now = new Date();
+  const thisKey = monthKey(now);
+  const lastKey = monthKey(new Date(now.getFullYear(), now.getMonth() - 1, 1));
+  const sumFor = (key) => (expenses || [])
+    .filter((e) => (e.date || '').startsWith(key))
+    .reduce((s, e) => s + (e.amount || 0), 0);
+  const thisTotal = Math.round(sumFor(thisKey) * 100) / 100;
+  const lastTotal = Math.round(sumFor(lastKey) * 100) / 100;
+  const dayOfMonth = now.getDate();
+  const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+  const projected = dayOfMonth > 0 ? Math.round((thisTotal / dayOfMonth) * daysInMonth * 100) / 100 : 0;
+  const change = lastTotal > 0 ? ((thisTotal - lastTotal) / lastTotal) * 100 : null;
+  return { thisTotal, lastTotal, projected, change, dayOfMonth, daysInMonth };
 }
 
 // ---------- Trends (history beyond the current period) ----------

@@ -69,6 +69,16 @@ export function gymNote({ thisWeek, didToday }) {
   return `${thisWeek} workout${thisWeek === 1 ? '' : 's'} this week. One more keeps the momentum.`;
 }
 
+// Varied positive reinforcement for a logged action (peak-end rule). The copy
+// rotates so the confirmation never starts feeling automatic. `count` is how
+// many of that thing were logged today.
+export function loggedCheer(count = 1) {
+  const first = ['Nice — first of the day.', "Logged. You're on the board.", 'Got it. One down today.'];
+  const more = [`Logged · ${count} today.`, `Nice rhythm · ${count} today.`, `Tracked · ${count} so far today.`, 'That counts. Keep going.'];
+  const pool = count <= 1 ? first : more;
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+
 export function goalNote(progress) {
   if (progress >= 1) return 'Goal complete - take a moment to feel proud.';
   if (progress >= 0.75) return 'So close now - you are almost there.';

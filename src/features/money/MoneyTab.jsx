@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import {
-  ArrowDownLeft, ArrowUpRight, Banknote, Calculator, CreditCard, Pencil, Plus,
-  Repeat, Search, Sparkles, Trash2, TrendingUp, Wallet,
+  ArrowDownLeft, ArrowRightLeft, ArrowUpRight, Banknote, Calculator, CreditCard, Pencil, Plus,
+  Repeat, Search, Sparkles, Trash2, TrendingDown, TrendingUp, Wallet,
 } from 'lucide-react';
 import { db } from '../../data/db';
 import { useSettings } from '../../hooks/useSettings';
@@ -15,6 +15,7 @@ import MiniBars from '../../components/MiniBars';
 import CategoryDonut from './CategoryDonut';
 import AddExpenseForm from './AddExpenseForm';
 import AddIncomeForm from './AddIncomeForm';
+import QuickLog from './QuickLog';
 import { formatMoney, currencySymbol } from '../../lib/currency';
 import { humanDate } from '../../lib/dates';
 import { domainCategoryMeta } from '../../data/categories';
@@ -26,10 +27,12 @@ import {
   spendingByCategory,
   affordVerdict,
   weeklyTotals,
+  monthStats,
   addAccount,
   updateAccount,
   deleteAccount,
   payCreditCard,
+  transferBetween,
   deleteExpense,
   deleteIncome,
 } from '../../data/money';
@@ -49,6 +52,7 @@ export default function MoneyTab() {
   const [editIncome, setEditIncome] = useState(null);
   const [editAccount, setEditAccount] = useState(null);
   const [payingCard, setPayingCard] = useState(null);
+  const [transferOpen, setTransferOpen] = useState(false);
   const [query, setQuery] = useState('');
 
   const expenses = useLiveQuery(() => db.expenses.orderBy('date').reverse().toArray(), [], []);
@@ -65,6 +69,7 @@ export default function MoneyTab() {
   const colorFor = (name) => domainCategoryMeta('money', name, customCategories || []).color;
 
   const trend = useMemo(() => weeklyTotals(expenses || [], incomes || [], 8), [expenses, incomes]);
+  const stats = useMemo(() => monthStats(expenses || []), [expenses]);
   const scheduled = recurrencesOfKind(recurrences, 'expense').concat(recurrencesOfKind(recurrences, 'income'));
 
   // Merged activity feed (expenses out + income in), newest first, searchable.
@@ -123,7 +128,21 @@ export default function MoneyTab() {
 
       <AffordCheck cur={cur} accounts={accountList} expenses={expenses || []} incomes={incomes || []} />
 
-      <Section title="Accounts" action={<AddBtn onClick={() => setSheet('account')} />}>
+      {accountList.length ? <QuickLog cur={cur} /> : null}
+
+      <Section
+        title="Accounts"
+        action={(
+          <div className="flex items-center gap-2">
+            {accountList.length >= 2 ? (
+              <button onClick={() => setTransferOpen(true)} className="btn-add-soft min-h-9 !px-3 !py-1 text-xs">
+                <ArrowRightLeft size={13} /> Transfer
+              </button>
+            ) : null}
+            <AddBtn onClick={() => setSheet('account')} />
+          </div>
+        )}
+      >
         {accountList.length === 0 ? (
           <p className="px-1 text-sm text-muted">No accounts yet. Add cash, debit, or a credit card.</p>
         ) : (
@@ -187,6 +206,35 @@ export default function MoneyTab() {
           </div>
         )}
       </Section>
+
+      {stats.thisTotal > 0 || stats.lastTotal > 0 ? (
+        <Section title="This month">
+          <div className="grid grid-cols-3 gap-3">
+            <div className="card p-3">
+              <p className="section-title">Spent</p>
+              <p className="mt-1 font-display text-lg font-extrabold text-ink">{formatMoney(stats.thisTotal, cur, { compact: true })}</p>
+              <p className="mt-0.5 text-[11px] text-muted">{stats.dayOfMonth}/{stats.daysInMonth} days</p>
+            </div>
+            <div className="card p-3">
+              <p className="section-title">vs last</p>
+              {stats.change === null ? (
+                <p className="mt-1 font-display text-lg font-extrabold text-muted">—</p>
+              ) : (
+                <p className={`mt-1 flex items-center gap-0.5 font-display text-lg font-extrabold ${stats.change > 0 ? 'text-rose-500' : 'text-money'}`}>
+                  {stats.change > 0 ? <TrendingUp size={15} /> : <TrendingDown size={15} />}
+                  {Math.abs(Math.round(stats.change))}%
+                </p>
+              )}
+              <p className="mt-0.5 text-[11px] text-muted">was {formatMoney(stats.lastTotal, cur, { compact: true })}</p>
+            </div>
+            <div className="card p-3">
+              <p className="section-title">Projected</p>
+              <p className="mt-1 font-display text-lg font-extrabold text-money">{formatMoney(stats.projected, cur, { compact: true })}</p>
+              <p className="mt-0.5 text-[11px] text-muted">at this pace</p>
+            </div>
+          </div>
+        </Section>
+      ) : null}
 
       {trend.some((t) => t.spent > 0 || t.earned > 0) ? (
         <Section title="Trend">
@@ -274,7 +322,65 @@ export default function MoneyTab() {
       <BottomSheet open={!!payingCard} onClose={() => setPayingCard(null)} title="Pay credit card">
         {payingCard ? <PayCreditForm card={payingCard} cur={cur} onDone={() => setPayingCard(null)} /> : null}
       </BottomSheet>
+      <BottomSheet open={transferOpen} onClose={() => setTransferOpen(false)} title="Transfer money">
+        <TransferForm accounts={accountList} cur={cur} onDone={() => setTransferOpen(false)} />
+      </BottomSheet>
     </div>
+  );
+}
+
+function TransferForm({ accounts, cur, onDone }) {
+  const { toast } = useFeedback();
+  const [fromId, setFromId] = useState(accounts[0]?.id || '');
+  const [toId, setToId] = useState(accounts[1]?.id || '');
+  const [amount, setAmount] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  const balLabel = (a) => (a.type === 'credit' ? `Due ${formatMoney(a.balance || 0, cur)}` : formatMoney(a.balance || 0, cur));
+
+  // Keep the destination valid even if it collides with the chosen source.
+  const toOptions = accounts.filter((a) => a.id !== fromId);
+  const safeToId = toOptions.some((a) => a.id === toId) ? toId : (toOptions[0]?.id || '');
+
+  const submit = async (e) => {
+    e.preventDefault();
+    if (busy) return;
+    setBusy(true);
+    try {
+      await transferBetween(fromId, safeToId, amount);
+      toast('Transfer logged', 'good');
+      onDone();
+    } catch (err) {
+      toast(err.message, 'bad');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <form onSubmit={submit} className="space-y-4 pb-4">
+      <div>
+        <label className="label">From</label>
+        <select value={fromId} onChange={(e) => setFromId(e.target.value)} className="input">
+          {accounts.map((a) => <option key={a.id} value={a.id}>{a.name} - {balLabel(a)}</option>)}
+        </select>
+      </div>
+      <div className="flex justify-center text-muted"><ArrowDownLeft size={18} /></div>
+      <div>
+        <label className="label">To</label>
+        <select value={safeToId} onChange={(e) => setToId(e.target.value)} className="input">
+          {toOptions.map((a) => <option key={a.id} value={a.id}>{a.name} - {balLabel(a)}</option>)}
+        </select>
+      </div>
+      <div>
+        <label className="label">Amount ({cur})</label>
+        <input autoFocus type="number" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0.00" className="input" />
+      </div>
+      <button disabled={busy} className="btn-add-primary w-full">
+        <span className="add-symbol"><ArrowRightLeft size={16} /></span>
+        {busy ? 'Transferring...' : 'Transfer'}
+      </button>
+    </form>
   );
 }
 

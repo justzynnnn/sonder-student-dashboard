@@ -59,7 +59,11 @@ export async function requestPersistentStorage() {
 }
 
 export function downloadJSON(obj, filename) {
-  const blob = new Blob([JSON.stringify(obj, null, 2)], { type: 'application/json' });
+  download(JSON.stringify(obj, null, 2), filename, 'application/json');
+}
+
+function download(content, filename, type) {
+  const blob = new Blob([content], { type });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
@@ -68,6 +72,35 @@ export function downloadJSON(obj, filename) {
   a.click();
   a.remove();
   URL.revokeObjectURL(url);
+}
+
+function csvCell(value) {
+  const str = String(value ?? '');
+  return /[",\n]/.test(str) ? `"${str.replace(/"/g, '""')}"` : str;
+}
+
+export const EXPORT_PERIODS = [
+  { id: '7', label: 'Last 7 days', days: 7 },
+  { id: '30', label: 'Last 30 days', days: 30 },
+  { id: '90', label: 'Last 3 months', days: 90 },
+  { id: '365', label: 'Last year', days: 365 },
+  { id: 'all', label: 'All time', days: null },
+];
+
+// Spreadsheet-friendly export of expenses (optionally limited to N days).
+export async function exportExpensesCsv(periodDays = null) {
+  let expenses = await db.expenses.orderBy('date').reverse().toArray();
+  if (periodDays) {
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - periodDays);
+    const cutoffStr = cutoff.toISOString().slice(0, 10);
+    expenses = expenses.filter((e) => (e.date || '') >= cutoffStr);
+  }
+  const header = ['Date', 'Description', 'Category', 'Amount'];
+  const rows = expenses.map((e) => [e.date, e.description, e.category, e.amount]);
+  const csv = [header, ...rows].map((r) => r.map(csvCell).join(',')).join('\n');
+  const stamp = new Date().toISOString().slice(0, 10);
+  download(csv, `sonder-expenses-${periodDays ? `last-${periodDays}d` : 'all'}-${stamp}.csv`, 'text/csv');
 }
 
 // Erase EVERYTHING on this device, then reopen an empty DB so the app keeps

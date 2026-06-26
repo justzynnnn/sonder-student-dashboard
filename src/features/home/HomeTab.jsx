@@ -20,6 +20,7 @@ import { db } from '../../data/db';
 import { useSettings } from '../../hooks/useSettings';
 import { useFeedback } from '../../components/Feedback';
 import QuoteCard from './QuoteCard';
+import VerseCard from './VerseCard';
 import StatCard from '../../components/StatCard';
 import StatPill from '../../components/StatPill';
 import { formatMoney } from '../../lib/currency';
@@ -82,6 +83,8 @@ export default function HomeTab({ streak = 0, tabs = {} }) {
       </section>
 
       <QuoteCard />
+
+      {settings.bibleVerse ? <VerseCard /> : null}
 
       <section className="soft-card p-4">
         <div className="flex items-start gap-3">
