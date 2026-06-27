@@ -3,7 +3,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../data/db';
 import { useSettings } from '../hooks/useSettings';
-import { seedQuotesIfEmpty } from '../data/quotes';
+import { clearLegacySeedQuotesForFreshSetup } from '../data/quotes';
 import { materializeRecurrences } from '../data/recurrences';
 import { pruneOrphanHabits } from '../data/habits';
 import { requestPersistentStorage } from '../data/admin';
@@ -36,11 +36,11 @@ export default function App() {
   const { settings, loading } = useSettings();
   const checkins = useLiveQuery(() => db.checkins.toArray(), [], []);
 
-  // First-run seed, catch up repeating items, and ask to keep data durable.
+  // First-run cleanup, catch up repeating items, and ask to keep data durable.
   // NOTE: no auto check-in — the streak is earned by real actions (logging an
   // expense, finishing a task, a workout, a habit), not by merely opening the app.
   useEffect(() => {
-    seedQuotesIfEmpty();
+    clearLegacySeedQuotesForFreshSetup();
     materializeRecurrences();
     pruneOrphanHabits();
     requestPersistentStorage();

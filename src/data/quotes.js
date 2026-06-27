@@ -2,7 +2,7 @@ import { db } from './db';
 import { generateId } from '../lib/ids';
 import { sanitizeText } from '../lib/sanitize';
 
-export const SEED_QUOTES = [
+const LEGACY_SEED_QUOTES = [
   { text: "Small steps every day add up to big change.", author: 'Sonder' },
   { text: "You don't have to be perfect to make progress.", author: 'Sonder' },
   { text: 'Discipline is choosing what you want most over what you want now.', author: '' },
@@ -10,19 +10,18 @@ export const SEED_QUOTES = [
   { text: 'A little progress each day adds up to big results.', author: '' },
 ];
 
-export async function seedQuotesIfEmpty() {
-  const count = await db.quotes.count();
-  if (count > 0) return;
-  const now = Date.now();
-  await db.quotes.bulkAdd(
-    SEED_QUOTES.map((q, i) => ({
-      id: generateId(),
-      text: q.text,
-      author: q.author,
-      pinned: 0,
-      createdAt: new Date(now + i).toISOString(),
-    })),
-  );
+const legacySeedKeys = new Set(LEGACY_SEED_QUOTES.map((q) => `${q.text}\n${q.author}`));
+
+export async function clearLegacySeedQuotesForFreshSetup() {
+  const settings = await db.settings.get('app');
+  if (settings?.onboarded) return;
+
+  const rows = await db.quotes.toArray();
+  const legacyIds = rows
+    .filter((q) => legacySeedKeys.has(`${q.text}\n${q.author || ''}`))
+    .map((q) => q.id);
+
+  if (legacyIds.length > 0) await db.quotes.bulkDelete(legacyIds);
 }
 
 export async function addQuote({ text, author }) {
