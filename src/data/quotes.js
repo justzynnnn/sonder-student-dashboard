@@ -2,26 +2,35 @@ import { db } from './db';
 import { generateId } from '../lib/ids';
 import { sanitizeText } from '../lib/sanitize';
 
-const LEGACY_SEED_QUOTES = [
-  { text: "Small steps every day add up to big change.", author: 'Sonder' },
-  { text: "You don't have to be perfect to make progress.", author: 'Sonder' },
-  { text: 'Discipline is choosing what you want most over what you want now.', author: '' },
-  { text: 'Take care of your money and your money takes care of you.', author: '' },
-  { text: 'A little progress each day adds up to big results.', author: '' },
+export const BUNDLED_QUOTES = [
+  { text: "You don't have to be great to start, but you have to start to be great.", author: 'Zig Ziglar' },
+  { text: 'Do what you can, with what you have, where you are.', author: 'Theodore Roosevelt' },
+  { text: 'It is okay to be at a place of struggle. Struggle is just another word for growth.', author: 'Idowu Koyenikan' },
+  { text: 'Grief is not a disorder, a disease, or a sign of weakness. It is an emotional, physical, and spiritual necessity.', author: 'Doug Manning' },
+  { text: 'There is no moving on without grief. Grief IS how we move.', author: 'Claire Bidwell Smith, LCPC, author of Anxiety: The Missing Stage of Grief' },
+  { text: 'Sometimes the bravest and most important thing you can do is just show up.', author: 'Bren\u00e9 Brown, PhD, LMSW, author of Daring Greatly' },
+  { text: 'Rock bottom became the solid foundation on which I rebuilt my life.', author: 'J.K. Rowling' },
+  { text: "Courage does not always roar. Sometimes courage is the quiet voice at the end of the day saying, 'I will try again tomorrow.'", author: 'Mary Anne Radmacher' },
+  { text: 'Hard times are not the enemy of a good life. They are part of it.', author: 'Attributed broadly to modern resilience literature' },
+  { text: 'Even the darkest night will end and the sun will rise.', author: 'Victor Hugo, Les Mis\u00e9rables' },
+  { text: 'Although the world is full of suffering, it is also full of the overcoming of it.', author: 'Helen Keller' },
+  { text: "The human capacity for burden is like bamboo. Far more flexible than you'd ever believe at first glance.", author: "Jodi Picoult, My Sister's Keeper" },
 ];
 
-const legacySeedKeys = new Set(LEGACY_SEED_QUOTES.map((q) => `${q.text}\n${q.author}`));
+export async function seedBundledQuotesIfEmpty() {
+  const count = await db.quotes.count();
+  if (count > 0) return;
 
-export async function clearLegacySeedQuotesForFreshSetup() {
-  const settings = await db.settings.get('app');
-  if (settings?.onboarded) return;
-
-  const rows = await db.quotes.toArray();
-  const legacyIds = rows
-    .filter((q) => legacySeedKeys.has(`${q.text}\n${q.author || ''}`))
-    .map((q) => q.id);
-
-  if (legacyIds.length > 0) await db.quotes.bulkDelete(legacyIds);
+  const now = Date.now();
+  await db.quotes.bulkAdd(
+    BUNDLED_QUOTES.map((q, i) => ({
+      id: generateId(),
+      text: q.text,
+      author: q.author,
+      pinned: 0,
+      createdAt: new Date(now + i).toISOString(),
+    })),
+  );
 }
 
 export async function addQuote({ text, author }) {
